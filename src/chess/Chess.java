@@ -12,9 +12,11 @@ import java.util.Scanner;
 
 public class Chess {
 	/**
-	 * This is the data structure that we will be using. It is a 2d Array of Pieces. Blank spots are by default NULL.
+	 * This is the data structure that we will be using. It is a 9x8 2D Array of Pieces.
+	 * We are ignoring row [0] in all our code so that the input rank correlates to the position in the 2D array without us having to subtract one from it.
+	 * Blank spots are by default NULL.
 	 */
-	static Piece[][] board = new Piece[8][8];
+	static Piece[][] board = new Piece[9][8];
 	/**
 	 * done is a flag that tracks to see if the game is over.
 	 * white_moves is a flag that is true if it is white's turn, false if it is black's turn
@@ -59,6 +61,7 @@ public class Chess {
 				
 				input = in.nextLine().toLowerCase();
 				
+				//Checking for done conditions (i.e., draw, resignation)
 				if(input.equals("resign")) {
 					if(white_moves) {
 						System.out.println("\nBlack wins");
@@ -96,7 +99,7 @@ public class Chess {
 				}
 				
 				//This is just for testing, will remove later
-				System.out.println("loc: " + loc + ". move_to: " + move_to + ". third: " + third);
+				//System.out.println("loc: " + loc + ". move_to: " + move_to + ". third: " + third);
 				
 				/*Part 1 code - Deals with proper starting position */
 				file = loc.charAt(0);
@@ -108,13 +111,13 @@ public class Chess {
 					asked_for_draw = false;
 					continue;
 				}
-				if(board[rank-1][fileToNum(file)] == null) {
+				if(board[rank][fileToNum(file)] == null) {
 					System.out.println("\nNo piece at indicated starting position.");
 					asked_for_draw = false;
 					continue;
 				}
 				else {
-					piece = board[rank-1][fileToNum(file)];
+					piece = board[rank][fileToNum(file)];
 				}
 				/*End of Part 1*/
 				
@@ -164,37 +167,37 @@ public class Chess {
 	 */
 	public static void initialize() {
 		//Initializing white pieces
-		board[0][0] = new Rook("a1");
-		board[0][1] = new Knight("a2");
-		board[0][2] = new Bishop("a3");
-		board[0][3] = new Queen("a4");
-		board[0][4] = new King("a5");
-		board[0][5] = new Bishop("a6");
-		board[0][6] = new Knight("a7");
-		board[0][7] = new Rook("a8");
+		board[1][0] = new Rook("a", 1);
+		board[1][1] = new Knight("b", 1);
+		board[1][2] = new Bishop("c", 1);
+		board[1][3] = new Queen("d", 1);
+		board[1][4] = new King("e", 1);
+		board[1][5] = new Bishop("f", 1);
+		board[1][6] = new Knight("g", 1);
+		board[1][7] = new Rook("h", 1);
 		for(int j = 0; j < 8; j++) {
-			Piece piece = board[0][j];
+			Piece piece = board[1][j];
 			piece.name = "w" + piece.name;
 		}
 		for(int j = 0; j < 8; j++) {
-			board[1][j] = new White_Pawn(numToFile(j) + "2");
+			board[2][j] = new White_Pawn(numToFile(j), 2);
 		}
 		
 		//Initializing black pieces
-		board[7][0] = new Rook("a1");
-		board[7][1] = new Knight("a2");
-		board[7][2] = new Bishop("a3");
-		board[7][3] = new Queen("a4");
-		board[7][4] = new King("a5");
-		board[7][5] = new Bishop("a6");
-		board[7][6] = new Knight("a7");
-		board[7][7] = new Rook("a8");
+		board[8][0] = new Rook("a", 8);
+		board[8][1] = new Knight("b", 8);
+		board[8][2] = new Bishop("c", 8);
+		board[8][3] = new Queen("d", 8);
+		board[8][4] = new King("e", 8);
+		board[8][5] = new Bishop("f", 8);
+		board[8][6] = new Knight("g", 8);
+		board[8][7] = new Rook("h", 8);
 		for(int j = 0; j < 8; j++) {
-			Piece piece = board[7][j];
+			Piece piece = board[8][j];
 			piece.name = "b" + piece.name;
 		}
 		for(int j = 0; j < 8; j++) {
-			board[6][j] = new Black_Pawn(numToFile(j) + "7");
+			board[7][j] = new Black_Pawn(numToFile(j), 7);
 		}
 	}
 	/**
@@ -204,10 +207,10 @@ public class Chess {
 	 */
 	public static void display() {
 		Piece piece;
-		for(int i = 7; i >= 0; i--) {
+		for(int i = 8; i > 0; i--) {
 			for(int j = 0; j < 8; j++) {
 				if(board[i][j] == null) {
-					if((i+j) % 2 == 1) {
+					if((i+j) % 2 == 0) {
 						System.out.print("   ");
 					}
 					else {
@@ -219,7 +222,7 @@ public class Chess {
 					System.out.print(piece.name+ " ");
 				}
 			}
-			System.out.println(i+1);
+			System.out.println(i);
 		}
 		for(int i = 0; i < 8; i++) {
 			System.out.print(" " + numToFile(i) + " ");
@@ -230,10 +233,10 @@ public class Chess {
 	/**
 	 * This helper method takes in the character for the file from the input and returns a number 0-7. Useful when referencing a position in the board 2D array
 	 * @param file - a character that is denotes the file in the input
-	 * @return int value between 0-7 associated with file character if successful, -1 if failed
+	 * @return int value between 0-7 associated with file character if successful. Throws an illegal argument exception if input is not valid
 	 * @author Jake
 	 */
-	public static int fileToNum(char file) {
+	public static int fileToNum(char file) throws IllegalArgumentException{
 		switch (file) {
 			case 'a': return 0;
 			case 'b': return 1;
@@ -243,7 +246,7 @@ public class Chess {
 			case 'f': return 5;
 			case 'g': return 6;
 			case 'h': return 7;
-			default: return -1;
+			default: throw new IllegalArgumentException("Invalid File Char to conver to Num");
 		}
 		
 	}
@@ -270,58 +273,124 @@ public class Chess {
 	}
 	
 	/**
-	 * This is the abstract class that all pieces will extend. Each piece must store a String of its name, and a string of its pos (2 character String that contains the Pieces file and rank) and implement the move method.
+	 * This is the abstract class that all pieces will extend. Each piece must store a String of its name, a char of its file (a-h), and an int of its rank (1-8)
+	 * Each piece must also implement the move method.
 	 * @param String input - the input string from the user. Each piece will check the input itself to see if valid for that piece
 	 * @author Jake
 	 *
 	 */
 	public static abstract class Piece {
 		String name;
-		String pos;
+		char file;
+		int rank;
 		abstract void move(String move_to) throws IllegalArgumentException;
 	}
 	
 	/**
 	 * This section contains all the pieces. White and Black Pawns are separate pieces since they move differently, but all other pieces move the same regardless of which side
-	 * All pieces take an input string of the position they are to move to.
+	 * All pieces take an input string of the position they are to move to, checking to see if the path is clear and if the input is valid
 	 * All pieces must be created with a starting position inputed as a string with FileRank
 	 * Pawns have a separate method for promotion that occurs when the reached the opposite end of the board
-	 * @author Jake
 	 *
 	 */
 	public static class White_Pawn extends Piece{
-		public White_Pawn(String start) {
+		public White_Pawn(String file, int rank) {
 			this.name = "wp";
-			this.pos = start;
+			this.file = file.toLowerCase().charAt(0);
+			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
-			//WHEN MOVING MAKE SURE TO TEST IF THE MOVE IS VALID, IF IT IS, SET THE STARTING POSITION TO NULL IN THE board[][] AND CHANGE THIS OBJ'S POS AS WELL AS ADD ITS NEW POSITION TO board[][]
-			throw new IllegalArgumentException();
-			//return;
-		}
+			char move_file = move_to.toLowerCase().charAt(0);
+			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			//STILL HAVE TO CODE ENPASSANT AND CAPTURE, GONNA IGNORE FOR NOW
+			if(move_file != this.file) {
+				//System.out.println("TESTING HERE \nthis.file: " + this.file + "\nmove_file: " + move_file);
+				throw new IllegalArgumentException();
+			} else {
+				if(move_rank == this.rank + 1) {
+					//Checking to see if path clear
+					if(board[this.rank + 1][fileToNum(this.file)] != null) {
+						throw new IllegalArgumentException();
+					}
+					//Moving piece
+					board[this.rank + 1][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					//Checking for promotion
+					if(this.rank == 8) {
+						this.promote();
+					}
+				} else if(move_rank == this.rank + 2 && this.rank == 2) {
+					//Checking to see if path clear
+					if(board[this.rank + 1][fileToNum(this.file)] != null || board[this.rank + 2][fileToNum(this.file)] != null) {
+						throw new IllegalArgumentException();
+					}
+					//Moving piece
+					board[this.rank + 2][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+				} else {
+					throw new IllegalArgumentException();
+				}
+			}
+
+		}//STILL HAVE TO CODE PROMOTE
 		void promote() {
 			return;
 		}
 	}
 	
 	public static class Black_Pawn extends Piece {
-		public Black_Pawn(String start) {
+		public Black_Pawn(String file, int rank) {
 			this.name = "bp";
-			this.pos = start;
+			this.file = file.toLowerCase().charAt(0);
+			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
-			//WHEN MOVING MAKE SURE TO TEST IF THE MOVE IS VALID, IF IT IS, SET THE STARTING POSITION TO NULL IN THE board[][] AND CHANGE THIS OBJ'S POS AS WELL AS ADD ITS NEW POSITION TO board[][]
-			return;
-		}
+			char move_file = move_to.toLowerCase().charAt(0);
+			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			//STILL HAVE TO CODE ENPASSANT AND CAPTURE, GONNA IGNORE FOR NOW
+			if(move_file != this.file) {
+				//System.out.println("TESTING HERE \nthis.file: " + this.file + "\nmove_file: " + move_file);
+				throw new IllegalArgumentException();
+			} else {
+				if(move_rank == this.rank - 1) {
+					//Checking to see if path clear
+					if(board[this.rank - 1][fileToNum(this.file)] != null) {
+						throw new IllegalArgumentException();
+					}
+					//Moving piece
+					board[this.rank - 1][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					//Checking for promotion
+					if(this.rank == 1) {
+						this.promote();
+					}
+				} else if(move_rank == this.rank - 2 && this.rank == 7) {
+					//Checking to see if path clear
+					if(board[this.rank - 1][fileToNum(this.file)] != null || board[this.rank - 2][fileToNum(this.file)] != null) {
+						throw new IllegalArgumentException();
+					}
+					//Moving piece
+					board[this.rank - 2][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+				} else {
+					throw new IllegalArgumentException();
+				}
+			}
+		}//STILL HAVE TO CODE PROMOTE
 		void promote() {
 			
 		}
 	}
 	
 	public static class Rook extends Piece {
-		public Rook(String start) {
+		public Rook(String file, int rank) {
 			this.name = "R";
-			this.pos = start;
+			this.file = file.toLowerCase().charAt(0);
+			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
 			return;
@@ -329,9 +398,10 @@ public class Chess {
 	}
 	
 	public static class Knight extends Piece {
-		public Knight(String start) {
+		public Knight(String file, int rank) {
 			this.name = "N";
-			this.pos = start;
+			this.file = file.toLowerCase().charAt(0);
+			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
 			return;
@@ -339,9 +409,10 @@ public class Chess {
 	}
 	
 	public static class Bishop extends Piece {
-		public Bishop(String start) {
+		public Bishop(String file, int rank) {
 			this.name = "B";
-			this.pos = start;
+			this.file = file.toLowerCase().charAt(0);
+			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
 			return;
@@ -349,9 +420,10 @@ public class Chess {
 	}
 	
 	public static class Queen extends Piece {
-		public Queen(String start) {
+		public Queen(String file, int rank) {
 			this.name = "Q";
-			this.pos = start;
+			this.file = file.toLowerCase().charAt(0);
+			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
 			return;
@@ -359,9 +431,10 @@ public class Chess {
 	}
 	
 	public static class King extends Piece {
-		public King(String start) {
+		public King(String file, int rank) {
 			this.name = "K";
-			this.pos = start;
+			this.file = file.toLowerCase().charAt(0);
+			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
 			return;
