@@ -231,10 +231,10 @@ public class Chess {
 			piece.name = "b" + piece.name;
 			piece.white_side = false;
 		}
-		for(int j = 0; j < 8; j++) {
+		/*for(int j = 0; j < 8; j++) {
 			board[7][j] = new Black_Pawn(numToFile(j), 7);
 			board[7][j].white_side = false;
-		}
+		}*/
 	}
 	/**
 	 * display() views the board 2D array and shows all the pieces that are in the board. Any position that is NULL instead of containing a piece will display blank or as ##.
@@ -773,12 +773,65 @@ public class Chess {
 			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
-			//FOR EACH PIECE TO MOVE, 
-			//CHECK TO SEE IF THIS PIECE BELONGS TO THE CURRENT SIDE PLAYING USING ITS NAME AND white_moves VARIABLE
-			//CHECK TO SEE IF THE MOVE_TO POSITION IS VALID FOR THIS PIECE
-			//CHECK TO SEE IF THE PATH IS CLEAR FOR THIS MOVEMENT
-			//IF VALID, SET THE POSITION IN THE BOARD TO THIS PIECE, CHANGE THIS PIECE'S file and rank, AND SET PREVIOUS POSITION TO NULL
-			return;
+			//Trying to move opponent's piece
+			if(this.white_side != white_moves) {
+				throw new IllegalArgumentException();
+			}
+			char move_file = move_to.toLowerCase().charAt(0);
+			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			
+			//If trying to move to the same spot
+			if(move_file == this.file && move_rank == this.rank) {
+				throw new IllegalArgumentException();
+			} //Moving horizontally first
+			else if(Math.abs(move_file - this.file) == 2) {
+				//Moving 1 vertical space
+				if(Math.abs(move_rank - this.rank) == 1) {
+					//Checking if piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Making sure piece isn't on the same side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Invalid move
+				else {
+					throw new IllegalArgumentException();
+				}
+			} //Moving vertically first
+			else if(Math.abs(move_rank - this.rank) == 2) {
+				//Moving 1 horizontal space
+				if(Math.abs(move_file - this.file) == 1) {
+					//Checking if piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Making sure piece isn't on the same side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Invalid move
+				else {
+					throw new IllegalArgumentException();
+				}
+			} //Invalid move
+			else {
+				throw new IllegalArgumentException();
+			}
+			
 		}
 	}
 	
@@ -994,7 +1047,8 @@ public class Chess {
 							if(board[1][fileToNum('h')] == null) {
 								throw new IllegalArgumentException();
 							}
-							if(board[1][fileToNum('h')].name != "wR") {
+							if(!board[1][fileToNum('h')].name.equals("wR")) {
+								System.out.println("TESTING: NAME: " + board[1][fileToNum('h')].name);
 								throw new IllegalArgumentException();
 							}
 							if(((Rook) board[1][fileToNum('h')]).has_moved == true) {
@@ -1036,7 +1090,7 @@ public class Chess {
 								}
 							}
 							//Moving King
-							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
@@ -1059,7 +1113,7 @@ public class Chess {
 							if(board[1][fileToNum('a')] == null) {
 								throw new IllegalArgumentException();
 							}
-							if(board[1][fileToNum('a')].name != "wR") {
+							if(!board[1][fileToNum('a')].name.equals("wR")) {
 								throw new IllegalArgumentException();
 							}
 							if(((Rook) board[1][fileToNum('a')]).has_moved == true) {
@@ -1101,7 +1155,7 @@ public class Chess {
 								}
 							}
 							//Moving King
-							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
@@ -1132,7 +1186,7 @@ public class Chess {
 							if(board[8][fileToNum('h')] == null) {
 								throw new IllegalArgumentException();
 							}
-							if(board[8][fileToNum('h')].name != "bR") {
+							if(!board[8][fileToNum('h')].name.equals("bR")) {
 								throw new IllegalArgumentException();
 							}
 							if(((Rook) board[8][fileToNum('h')]).has_moved == true) {
@@ -1174,7 +1228,7 @@ public class Chess {
 								}
 							}
 							//Moving King
-							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
@@ -1197,7 +1251,7 @@ public class Chess {
 							if(board[8][fileToNum('a')] == null) {
 								throw new IllegalArgumentException();
 							}
-							if(board[8][fileToNum('a')].name != "bR") {
+							if(!board[8][fileToNum('a')].name.equals("bR")) {
 								throw new IllegalArgumentException();
 							}
 							if(((Rook) board[8][fileToNum('a')]).has_moved == true) {
@@ -1239,7 +1293,7 @@ public class Chess {
 								}
 							}
 							//Moving King
-							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
