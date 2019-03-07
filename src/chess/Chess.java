@@ -153,6 +153,7 @@ public class Chess {
 						else {
 							((White_Pawn) piece).promote("q");
 						}
+						check(file, rank);
 					}
 					if(piece instanceof Black_Pawn && rank == 1) {
 						if(third.equals("r")) {
@@ -167,6 +168,7 @@ public class Chess {
 						else {
 							((Black_Pawn) piece).promote("q");
 						}
+						check(file, rank);
 					}
 				} catch (IllegalArgumentException e) {
 					System.out.println("\nIllegal move, try again");
@@ -640,6 +642,8 @@ public class Chess {
 	
 	public static class Rook extends Piece {
 		
+		boolean has_moved = false;
+		
 		public Rook(char file, int rank) {
 			this.name = "R";
 			this.file = file;
@@ -681,6 +685,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
+					this.has_moved = true;
 					check(this.file, this.rank);
 					return;
 				} //Moving down the board
@@ -703,6 +708,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
+					this.has_moved = true;
 					check(this.file, this.rank);
 					return;
 				}
@@ -728,6 +734,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
+					this.has_moved = true;
 					check(this.file, this.rank);
 					return;
 				} //Moving to the left
@@ -750,6 +757,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
+					this.has_moved = true;
 					check(this.file, this.rank);
 					return;
 				}
@@ -915,17 +923,15 @@ public class Chess {
 	}
 	
 	public static class King extends Piece {
+		
+		boolean has_moved = false;
+		
 		public King(char file, int rank) {
 			this.name = "K";
 			this.file = file;
 			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
-			
-			//STILL NEED TO IMPLEMENT CASTLING
-			
-			
-			
 			
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
@@ -937,7 +943,7 @@ public class Chess {
 			//If trying to move to the same spot
 			if(move_file == this.file && move_rank == this.rank) {
 				throw new IllegalArgumentException();
-			} //Trying to move more than one square away
+			} //Trying to move more than two squares away
 			else if(Math.abs(move_rank - this.rank) + Math.abs(fileToNum(move_file) - fileToNum(this.file)) > 2) {
 				throw new IllegalArgumentException();
 			} //Valid move
@@ -975,7 +981,283 @@ public class Chess {
 					
 				} //Trying to move twice in one direction
 				else {
-					throw new IllegalArgumentException();
+					//Check for castling
+					//If it's the white king
+					if(this.white_side) {
+						//Trying to castle kingside
+						if(move_to.equals("g1")) {
+							//If this king has already moved
+							if(this.has_moved) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if King Rook Moved
+							if(board[1][fileToNum('h')] == null) {
+								throw new IllegalArgumentException();
+							}
+							if(board[1][fileToNum('h')].name != "wR") {
+								throw new IllegalArgumentException();
+							}
+							if(((Rook) board[1][fileToNum('h')]).has_moved == true) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if path clear
+							for(int i = 1; i < 3; i++) {
+								if(board[this.rank][fileToNum((char) (this.file + i))] != null) {
+									throw new IllegalArgumentException();
+								}
+							}
+							//Making sure King doesn't pass through check
+							//Checking for f1 space
+							board_copy[1][fileToNum('f')] = board_copy[1][fileToNum('e')];
+							board_copy[1][fileToNum('e')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Checking for g1 space
+							board_copy[1][fileToNum('g')] = board_copy[1][fileToNum('f')];
+							board_copy[1][fileToNum('f')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Moving King
+							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							this.has_moved = true;
+							//Moving Rook
+							board[1][fileToNum('f')] = board[1][fileToNum('h')];
+							board[1][fileToNum('h')] = null;
+							board[1][fileToNum('f')].rank = 1;
+							board[1][fileToNum('f')].file = 'f';
+							((Rook) board[1][fileToNum('f')]).has_moved = true;
+							check('f', 1);
+							return;
+						} //Trying to castle queenside
+						else if(move_to.equals("c1")) {
+							//If this king has already moved
+							if(this.has_moved) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if Queen Rook Moved
+							if(board[1][fileToNum('a')] == null) {
+								throw new IllegalArgumentException();
+							}
+							if(board[1][fileToNum('a')].name != "wR") {
+								throw new IllegalArgumentException();
+							}
+							if(((Rook) board[1][fileToNum('a')]).has_moved == true) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if path clear
+							for(int i = 1; i < 3; i++) {
+								if(board[this.rank][fileToNum((char) (this.file - i))] != null) {
+									throw new IllegalArgumentException();
+								}
+							}
+							//Making sure King doesn't pass through check
+							//Checking for d1 space
+							board_copy[1][fileToNum('d')] = board_copy[1][fileToNum('e')];
+							board_copy[1][fileToNum('e')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Checking for c1 space
+							board_copy[1][fileToNum('c')] = board_copy[1][fileToNum('d')];
+							board_copy[1][fileToNum('d')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Moving King
+							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							this.has_moved = true;
+							//Moving Rook
+							board[1][fileToNum('d')] = board[1][fileToNum('a')];
+							board[1][fileToNum('a')] = null;
+							board[1][fileToNum('d')].rank = 1;
+							board[1][fileToNum('d')].file = 'd';
+							((Rook) board[1][fileToNum('d')]).has_moved = true;
+							check('d', 1);
+							return;
+						} //Invalid move
+						else {
+							throw new IllegalArgumentException();
+						}
+						
+						
+					} //If it is the black king
+					else {
+						//Trying to castle kingside
+						if(move_to.equals("g8")) {
+							//If this king has already moved
+							if(this.has_moved) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if King Rook Moved
+							if(board[8][fileToNum('h')] == null) {
+								throw new IllegalArgumentException();
+							}
+							if(board[8][fileToNum('h')].name != "bR") {
+								throw new IllegalArgumentException();
+							}
+							if(((Rook) board[8][fileToNum('h')]).has_moved == true) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if path clear
+							for(int i = 1; i < 3; i++) {
+								if(board[this.rank][fileToNum((char) (this.file + i))] != null) {
+									throw new IllegalArgumentException();
+								}
+							}
+							//Making sure King doesn't pass through check
+							//Checking for f8 space
+							board_copy[8][fileToNum('f')] = board_copy[8][fileToNum('e')];
+							board_copy[8][fileToNum('e')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Checking for g1 space
+							board_copy[8][fileToNum('g')] = board_copy[1][fileToNum('f')];
+							board_copy[8][fileToNum('f')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Moving King
+							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							this.has_moved = true;
+							//Moving Rook
+							board[8][fileToNum('f')] = board[8][fileToNum('h')];
+							board[8][fileToNum('h')] = null;
+							board[8][fileToNum('f')].rank = 8;
+							board[8][fileToNum('f')].file = 'f';
+							((Rook) board[8][fileToNum('f')]).has_moved = true;
+							check('f', 8);
+							return;
+						} //Trying to castle queenside
+						else if(move_to.equals("c8")) {
+							//If this king has already moved
+							if(this.has_moved) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if Queen Rook Moved
+							if(board[8][fileToNum('a')] == null) {
+								throw new IllegalArgumentException();
+							}
+							if(board[8][fileToNum('a')].name != "bR") {
+								throw new IllegalArgumentException();
+							}
+							if(((Rook) board[8][fileToNum('a')]).has_moved == true) {
+								throw new IllegalArgumentException();
+							}
+							//Checking if path clear
+							for(int i = 1; i < 3; i++) {
+								if(board[this.rank][fileToNum((char) (this.file - i))] != null) {
+									throw new IllegalArgumentException();
+								}
+							}
+							//Making sure King doesn't pass through check
+							//Checking for d8 space
+							board_copy[8][fileToNum('d')] = board_copy[8][fileToNum('e')];
+							board_copy[8][fileToNum('e')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Checking for c8 space
+							board_copy[8][fileToNum('c')] = board_copy[8][fileToNum('d')];
+							board_copy[8][fileToNum('d')] = null;
+							for(int r = 1; r < 9; r++) {
+								for(int f = 0; f < 8; f++) {
+									//If there is a piece in this spot
+									if(board_copy[r][f] != null) {
+										//If the piece is an opponent
+										if(board_copy[r][f].white_side != this.white_side) {
+											check(numToFile(f), r);
+										}
+									}
+								}
+							}
+							//Moving King
+							board[move_rank][move_file] = board[this.rank][fileToNum(this.file)];
+							board[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							this.has_moved = true;
+							//Moving Rook
+							board[8][fileToNum('d')] = board[8][fileToNum('a')];
+							board[8][fileToNum('a')] = null;
+							board[8][fileToNum('d')].rank = 8;
+							board[8][fileToNum('d')].file = 'd';
+							((Rook) board[8][fileToNum('d')]).has_moved = true;
+							check('d', 8);
+							return;
+						} //Invalid move
+						else {
+							throw new IllegalArgumentException();
+						}
+					}
+					
 				}
 				
 				//Checking to see if path clear
@@ -1005,6 +1287,7 @@ public class Chess {
 				board[this.rank][fileToNum(this.file)] = null;
 				this.rank = move_rank;
 				this.file = move_file;
+				this.has_moved = true;
 				check(this.file, this.rank);
 				return;
 			}
