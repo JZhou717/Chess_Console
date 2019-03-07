@@ -53,7 +53,8 @@ public class Chess {
 			display();
 			
 			while(!valid_input) {
-				
+				//Checking for stalemate
+				stalemate();
 				
 				//Resets the enpassant variables since enpassant is valid only immediately after the opponent has moved two steps with a pawn. Since white_enpassant stores a value only if white played a double step last turn and it is again white's turn, we reset it. Same thing for black
 				if(white_moves) {
@@ -321,6 +322,13 @@ public class Chess {
 	 * This method is ran by the check function, if there is a check on the King, check to see if there is a checkmate. If there is, end game
 	 */
 	public static void checkmate() {
+		
+	}
+	
+	/**
+	 * Before every move is played, this method checks to see if the current side is in stalemate
+	 */
+	public static void stalemate() {
 		
 	}
 	
@@ -970,7 +978,208 @@ public class Chess {
 			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
+			//Trying to move opponent's piece
+			if(this.white_side != white_moves) {
+				throw new IllegalArgumentException();
+			}
+			char move_file = move_to.toLowerCase().charAt(0);
+			int move_rank = Integer.parseInt(move_to.substring(1,2));
 			
+			//If trying to move to the same spot
+			if(move_file == this.file && move_rank == this.rank) {
+				throw new IllegalArgumentException();
+			} //Moving vertically
+			else if(move_file == this.file) {
+				//Moving up
+				if(move_rank > this.rank) {
+					//Checking to see if path clear
+					for(int i = this.rank + 1; i < move_rank; i++) {
+						if(board[i][fileToNum(this.file)] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there and 
+					if(board[move_rank][fileToNum(this.file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[move_rank][fileToNum(this.file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving down
+				else {
+					//Checking to see if path clear
+					for(int i = this.rank - 1; i > move_rank; i--) {
+						if(board[i][fileToNum(this.file)] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there and 
+					if(board[move_rank][fileToNum(this.file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[move_rank][fileToNum(this.file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				}
+			} //Moving horizontally
+			else if(move_rank == this.rank) {
+				//Moving right
+				if(move_file > this.file) {
+					//Checking to see if path clear
+					for(int i = this.file + 1; i < move_file; i++) {
+						if(board[this.rank][fileToNum((char) i)] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there and 
+					if(board[this.rank][fileToNum(move_file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[this.rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving left
+				else {
+					//Checking to see if path clear
+					for(int i = this.file - 1; i > move_file; i--) {
+						if(board[this.rank][fileToNum((char) i)] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there and 
+					if(board[this.rank][fileToNum(move_file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[this.rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				}
+			} //Moving diagonally
+			else if(Math.abs(move_rank - this.rank) == Math.abs(fileToNum(move_file) - fileToNum(this.file))) {
+				//Moving up-right
+				if(move_file > this.file && move_rank > this.rank) {
+					//Checking to see if path clear
+					for(int i = (move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank + i][fileToNum((char) (this.file + i))] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving up-left
+				else if(move_file < this.file && move_rank > this.rank) {
+					//Checking to see if path clear
+					for(int i = (move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank + i][fileToNum((char) (this.file - i))] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving down-right
+				else if(move_file > this.file && move_rank < this.rank) {
+					//Checking to see if path clear
+					for(int i = Math.abs(move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank - i][fileToNum((char) (this.file + i))] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving down left
+				else if(move_file < this.file && move_rank < this.rank) {
+					//Checking to see if path clear
+					for(int i = Math.abs(move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank - i][fileToNum((char) (this.file - i))] != null) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Invalid move
+				else {
+					throw new IllegalArgumentException();
+				}
+			} //Invalid move
+			else {
+				throw new IllegalArgumentException();
+			}
 			
 		}
 	}
