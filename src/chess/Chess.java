@@ -170,6 +170,7 @@ public class Chess {
 					}
 				} catch (IllegalArgumentException e) {
 					System.out.println("\nIllegal move, try again");
+					e.printStackTrace();
 					asked_for_draw = false;
 					continue;
 				}
@@ -209,10 +210,10 @@ public class Chess {
 			piece.name = "w" + piece.name;
 			piece.white_side = true;
 		}
-		for(int j = 0; j < 8; j++) {
+		/*for(int j = 0; j < 8; j++) {
 			board[2][j] = new White_Pawn(numToFile(j), 2);
 			board[2][j].white_side = true;
-		}
+		}*/
 		
 		//Initializing black pieces
 		board[8][0] = new Rook('a', 8);
@@ -646,7 +647,7 @@ public class Chess {
 		}
 		void move(String move_to)  throws IllegalArgumentException{
 			//Trying to move opponent's piece
-			if(white_side != white_moves) {
+			if(this.white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
 			char move_file = move_to.toLowerCase().charAt(0);
@@ -780,12 +781,124 @@ public class Chess {
 			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
+			//System.out.println("TESTING IN BISHOP MOVE");
 			//Trying to move opponent's piece
-			if(white_side != white_moves) {
+			if(this.white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
 			char move_file = move_to.toLowerCase().charAt(0);
 			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			//If trying to move to the same spot
+			if(move_file == this.file && move_rank == this.rank) {
+				throw new IllegalArgumentException();
+			} //If not moving on a diagonal
+			else if(Math.abs(move_rank - this.rank) != Math.abs(fileToNum(move_file) - fileToNum(this.file))) {
+				//System.out.println("TESTING DIAGONAL MATH WRONG");
+				throw new IllegalArgumentException();
+			} //Moving diagonally
+			else {
+				//Moving up right
+				if(move_file > this.file && move_rank > this.rank) {
+					//Checking to see if path clear
+					for(int i = (move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank + i][fileToNum((char) (this.file + i))] != null) {
+							//System.out.println("TESTING PATH NOT CLEAR");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							//System.out.println("TESTING PIECE IN POSITION");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving up left
+				else if(move_file < this.file && move_rank > this.rank) {
+					//Checking to see if path clear
+					for(int i = (move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank + i][fileToNum((char) (this.file - i))] != null) {
+							//System.out.println("TESTING PATH NOT CLEAR");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							//System.out.println("TESTING PIECE IN POSITION");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving down right
+				else if(move_file > this.file && move_rank < this.rank) {
+					//Checking to see if path clear
+					for(int i = Math.abs(move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank - i][fileToNum((char) (this.file + i))] != null) {
+							//System.out.println("TESTING PATH NOT CLEAR");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							//System.out.println("TESTING PIECE IN POSITION");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Moving down left
+				else if(move_file < this.file && move_rank < this.rank){
+					//Checking to see if path clear
+					for(int i = Math.abs(move_rank - this.rank) - 1; i > 0; i--) {
+						if(board[this.rank - i][fileToNum((char) (this.file - i))] != null) {
+							//System.out.println("TESTING PATH NOT CLEAR");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Seeing if there is a piece there
+					if(board[move_rank][fileToNum(move_file)] != null) {
+						//Checking its side
+						if(board[move_rank][fileToNum(move_file)].white_side == this.white_side) {
+							//System.out.println("TESTING PIECE IN POSITION");
+							throw new IllegalArgumentException();
+						}
+					}
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					check(this.file, this.rank);
+					return;
+				} //Something's wrong
+				else {
+					//System.out.println("SOMETHING WRONG");
+					throw new IllegalArgumentException();
+				}
+			}
 		}
 	}
 	
