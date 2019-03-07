@@ -211,6 +211,7 @@ public class Chess {
 		}
 		for(int j = 0; j < 8; j++) {
 			board[2][j] = new White_Pawn(numToFile(j), 2);
+			board[2][j].white_side = true;
 		}
 		
 		//Initializing black pieces
@@ -229,6 +230,7 @@ public class Chess {
 		}
 		for(int j = 0; j < 8; j++) {
 			board[7][j] = new Black_Pawn(numToFile(j), 7);
+			board[7][j].white_side = false;
 		}
 	}
 	/**
@@ -643,8 +645,7 @@ public class Chess {
 			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
-				//CHECK TO SEE IF THE PATH IS CLEAR FOR THIS MOVEMENT
-				//IF VALID, SET THE POSITION IN THE BOARD TO THIS PIECE, CHANGE THIS PIECE'S file and rank, AND SET PREVIOUS POSITION TO NULL
+			//Trying to move opponent's piece
 			if(white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
@@ -668,14 +669,15 @@ public class Chess {
 						}
 					}
 					//Seeing if there is a piece there and 
-					//making sure the piece isn't on the same side
-					if(board[move_rank][move_file] != null
-					&& board[move_rank][move_file].white_side == this.white_side) {
-						throw new IllegalArgumentException();
+					if(board[move_rank][fileToNum(this.file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[move_rank][fileToNum(this.file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
 					}
 					//Moving to position
-					board[move_rank][move_file] = board[this.rank][this.file];
-					board[this.rank][this.file] = null;
+					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
 					check(this.file, this.rank);
@@ -688,13 +690,16 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
-					if(board[move_rank][move_file] != null
-							&& board[move_rank][move_file].white_side == this.white_side) {
-								throw new IllegalArgumentException();
-							}
+					//Seeing if there is a piece there and 
+					if(board[move_rank][fileToNum(this.file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[move_rank][fileToNum(this.file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
 					//Moving to position
-					board[move_rank][move_file] = board[this.rank][this.file];
-					board[this.rank][this.file] = null;
+					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
 					check(this.file, this.rank);
@@ -706,17 +711,20 @@ public class Chess {
 				if(move_file > this.file) {
 					//Checking to see if path clear
 					for(int i = this.file + 1; i < move_file; i++) {
-						if(board[this.rank][i] != null) {
+						if(board[this.rank][fileToNum((char) i)] != null) {
 							throw new IllegalArgumentException();
 						}
 					}
-					if(board[move_rank][move_file] != null
-							&& board[move_rank][move_file].white_side == this.white_side) {
-								throw new IllegalArgumentException();
-							}
+					//Seeing if there is a piece there and 
+					if(board[this.rank][fileToNum(move_file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[this.rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
 					//Moving to position
-					board[move_rank][move_file] = board[this.rank][this.file];
-					board[this.rank][this.file] = null;
+					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
 					check(this.file, this.rank);
@@ -725,17 +733,20 @@ public class Chess {
 				else {
 					//Checking to see if path clear
 					for(int i = this.file - 1; i > move_file; i--) {
-						if(board[this.rank][i] != null) {
+						if(board[this.rank][fileToNum((char) i)] != null) {
 							throw new IllegalArgumentException();
 						}
 					}
-					if(board[move_rank][move_file] != null
-							&& board[move_rank][move_file].white_side == this.white_side) {
-								throw new IllegalArgumentException();
-							}
+					//Seeing if there is a piece there and 
+					if(board[this.rank][fileToNum(move_file)] != null) {
+						//making sure the piece isn't on the same side
+						if(board[this.rank][fileToNum(move_file)].white_side == this.white_side) {
+							throw new IllegalArgumentException();
+						}
+					}
 					//Moving to position
-					board[move_rank][move_file] = board[this.rank][this.file];
-					board[this.rank][this.file] = null;
+					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
 					check(this.file, this.rank);
@@ -769,12 +780,12 @@ public class Chess {
 			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
-			//FOR EACH PIECE TO MOVE, 
-			//CHECK TO SEE IF THIS PIECE BELONGS TO THE CURRENT SIDE PLAYING USING ITS NAME AND white_moves VARIABLE
-			//CHECK TO SEE IF THE MOVE_TO POSITION IS VALID FOR THIS PIECE
-			//CHECK TO SEE IF THE PATH IS CLEAR FOR THIS MOVEMENT
-			//IF VALID, SET THE POSITION IN THE BOARD TO THIS PIECE, CHANGE THIS PIECE'S file and rank, AND SET PREVIOUS POSITION TO NULL
-			return;
+			//Trying to move opponent's piece
+			if(white_side != white_moves) {
+				throw new IllegalArgumentException();
+			}
+			char move_file = move_to.toLowerCase().charAt(0);
+			int move_rank = Integer.parseInt(move_to.substring(1,2));
 		}
 	}
 	
