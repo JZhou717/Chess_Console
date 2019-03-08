@@ -2,6 +2,21 @@ package chess;
 
 import java.util.Scanner;
 
+//NEED TO DO:
+
+//Currently do not account for revealed checks, will patch
+//Checkmate not implemented
+//Stalemate not implemented
+//Test check with all pieces
+
+//Fix comments
+
+
+
+
+
+
+
 /**
  * This will be Jake Zhou and Thomas Heck's Chess Project
  * 
@@ -314,15 +329,554 @@ public class Chess {
 	 * @param char file, int rank - the file and rank of the piece that just moved. Checking to see if this piece is checking the opponent King
 	 * @return returns true if opponent in check, false otherwise
 	 */
-	public static boolean check(char file, int rank) {
-		return false;
+	public static void check(char file, int rank) throws IllegalArgumentException{
+		Piece piece = board[rank][fileToNum(file)];
+		Piece temp = null;
+		
+		//Check for check by white pawn
+		if(piece instanceof White_Pawn) {
+			
+			//If the pawn is in the last rank, it should have promoted
+			if(rank == 8) {
+				throw new IllegalArgumentException();
+			}
+			
+			White_Pawn pawn = (White_Pawn) piece;
+			//a pawns only check one side
+			if(file == 'a') {
+				//checking up 1 right 1
+				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file + 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					}
+				}
+			} //h pawns only check one side
+			else if(file == 'h') {
+				//checking up 1 left 1
+				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file - 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					}
+				}
+			} //middle pawns check for two sides
+			else {
+				//checking up 1 right 1
+				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file + 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					}
+				}
+				//checking up 1 left 1
+				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file - 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					}
+				}
+			}
+			
+		} //Check for check by black pawn
+		else if(piece instanceof Black_Pawn) {
+			
+			//If the pawn is in the last rank, it should have promoted
+			if(rank == 1) {
+				throw new IllegalArgumentException();
+			}
+			
+			Black_Pawn pawn = (Black_Pawn) piece;
+			//a pawns only check one side
+			if(file == 'a') {
+				//checking down 1 right 1
+				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file + 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						checkmate((char) (file + 1), rank - 1);
+						return;
+					}
+				}
+			} //h pawns only check one side
+			else if(file == 'h') {
+				//checking down 1 left 1
+				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file - 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						checkmate((char) (file - 1), rank - 1);
+						return;
+					}
+				}
+			} //middle pawns check for two sides
+			else {
+				//checking down 1 right 1
+				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file + 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						checkmate((char) (file + 1), rank - 1);
+						return;
+					}
+				}
+				//checking up 1 left 1
+				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file - 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						checkmate((char) (file - 1), rank - 1);
+						return;
+					}
+				}
+			}
+			
+		} //Check for check by Rook
+		else if(piece instanceof Rook) {
+			
+			Rook rook = (Rook) piece;
+			
+			//Check for checks on the row to the left
+			for(int f = fileToNum(rook.file) - 1; f > 0; f--) {
+				temp = board[rook.rank][f];
+				if(temp != null) {
+					if(temp.white_side != rook.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks on the row to the right
+			for(int f = fileToNum(rook.file) + 1; f < 8; f++) {
+				temp = board[rook.rank][f];
+				if(temp != null) {
+					if(temp.white_side != rook.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Checks for checks on top
+			for(int r = rook.rank + 1; r < 9; r++) {
+				temp = board[r][fileToNum(rook.file)];
+				if(temp != null) {
+					if(temp.white_side != rook.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks below
+			for(int r = rook.rank - 1; r > 0; r--) {
+				temp = board[r][fileToNum(rook.file)];
+				if(temp != null) {
+					if(temp.white_side != rook.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			
+		} //Check for check by Knight
+		else if(piece instanceof Knight) {
+			
+			Knight knight = (Knight) piece;
+			
+			//Check 1st layer above 
+			if(knight.rank <= 7) {
+				//Check up-left one
+				if(knight.file >= 'c') {
+					temp = board[knight.rank + 1][fileToNum((char) (knight.file - 2))];
+					if(temp != null) {
+						if(temp.white_side != knight.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+				}
+				//Check up-right one
+				if(knight.file <= 'f') {
+					temp = board[knight.rank + 1][fileToNum((char) (knight.file + 2))];
+					if(temp != null) {
+						if(temp.white_side != knight.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+				}
+				//Check 2nd layer above
+				if(knight.rank <= 6) {
+					//Check up-left two
+					if(knight.file >= 'b') {
+						temp = board[knight.rank + 2][fileToNum((char) (knight.file - 1))];
+						if(temp != null) {
+							if(temp.white_side != knight.white_side && temp instanceof King) {
+								checkmate((char) temp.file, temp.rank);
+								return;
+							}
+						}
+					}
+					//Check up-right two
+					if(knight.file <= 'g') {
+						temp = board[knight.rank + 2][fileToNum((char) (knight.file + 1))];
+						if(temp != null) {
+							if(temp.white_side != knight.white_side && temp instanceof King) {
+								checkmate((char) temp.file, temp.rank);
+								return;
+							}
+						}
+					}
+				}
+			}
+			//Check 1st layer below 
+			if(knight.rank >= 2) {
+				//Check down-left one
+				if(knight.file >= 'c') {
+					temp = board[knight.rank - 1][fileToNum((char) (knight.file - 2))];
+					if(temp != null) {
+						if(temp.white_side != knight.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+				}
+				//Check down-right one
+				if(knight.file <= 'f') {
+					temp = board[knight.rank - 1][fileToNum((char) (knight.file + 2))];
+					if(temp != null) {
+						if(temp.white_side != knight.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+				}
+				//Check 2nd layer below
+				if(knight.rank >= 3) {
+					//Check down-left two
+					if(knight.file >= 'b') {
+						temp = board[knight.rank - 2][fileToNum((char) (knight.file - 1))];
+						if(temp != null) {
+							if(temp.white_side != knight.white_side && temp instanceof King) {
+								checkmate((char) temp.file, temp.rank);
+								return;
+							}
+						}
+					}
+					//Check down-right two
+					if(knight.file <= 'g') {
+						temp = board[knight.rank - 2][fileToNum((char) (knight.file + 1))];
+						if(temp != null) {
+							if(temp.white_side != knight.white_side && temp instanceof King) {
+								checkmate((char) temp.file, temp.rank);
+								return;
+							}
+						}
+					}
+				}
+			}
+			
+		} //Check for check by Bishop
+		else if(piece instanceof Bishop) {
+			
+			Bishop bishop = (Bishop) piece;
+			
+			//Check up
+			for(int r = bishop.rank + 1; r < 9; r++) {
+				//Check right
+				for(int f = fileToNum((char) (bishop.file + 1)); f < 8; f++) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != bishop.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+				//Check left
+				for(int f = fileToNum((char) (bishop.file - 1)); f > 0; f--) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != bishop.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+			}
+			//Check down
+			for(int r = bishop.rank - 1; r > 0; r--) {
+				//Check right
+				for(int f = fileToNum((char) (bishop.file + 1)); f < 8; f++) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != bishop.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+				//Check left
+				for(int f = fileToNum((char) (bishop.file - 1)); f > 0; f--) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != bishop.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+			}
+			
+		} //Check for check by Queen
+		else if(piece instanceof Queen) {
+			
+			Queen queen = (Queen) piece;
+			
+			//Check for checks on the row to the left
+			for(int f = fileToNum(queen.file) - 1; f > 0; f--) {
+				temp = board[queen.rank][f];
+				if(temp != null) {
+					if(temp.white_side != queen.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks on the row to the right
+			for(int f = fileToNum(queen.file) + 1; f < 8; f++) {
+				temp = board[queen.rank][f];
+				if(temp != null) {
+					if(temp.white_side != queen.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Checks for checks on top
+			for(int r = queen.rank + 1; r < 9; r++) {
+				temp = board[r][fileToNum(queen.file)];
+				if(temp != null) {
+					if(temp.white_side != queen.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks below
+			for(int r = queen.rank - 1; r > 0; r--) {
+				temp = board[r][fileToNum(queen.file)];
+				if(temp != null) {
+					if(temp.white_side != queen.white_side && temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check up diagonals
+			for(int r = queen.rank + 1; r < 9; r++) {
+				//Check right
+				for(int f = fileToNum((char) (queen.file + 1)); f < 8; f++) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != queen.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+				//Check left
+				for(int f = fileToNum((char) (queen.file - 1)); f > 0; f--) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != queen.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+			}
+			//Check down diagonals
+			for(int r = queen.rank - 1; r > 0; r--) {
+				//Check right
+				for(int f = fileToNum((char) (queen.file + 1)); f < 8; f++) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != queen.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+				//Check left
+				for(int f = fileToNum((char) (queen.file - 1)); f > 0; f--) {
+					temp = board[r][f];
+					//Piece on diagonal
+					if(temp != null) {
+						if(temp.white_side != queen.white_side && temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						} //Piece blocking king
+						else {
+							break;
+						}
+					}
+				}
+			}
+			
+		} //Check for check by King
+		else if(piece instanceof King) {
+			
+			King king = (King) piece;
+			
+			//Check above
+			if(king.rank != 8) {
+				
+				//Check up center
+				temp = board[king.rank + 1][fileToNum(king.file)];
+				if(temp != null) {
+					//if it's the opposite king
+					if(temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					}
+					//Check up right
+					if(king.file != 'h') {
+						temp = board[king.rank + 1][fileToNum((char) (king.file + 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+					//Check up left
+					if(king.file != 'a') {
+						temp = board[king.rank + 1][fileToNum((char) (king.file - 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+				}
+				
+			}
+			//Check below
+			if(king.rank != 1) {
+				
+				//Check down center
+				temp = board[king.rank - 1][fileToNum(king.file)];
+				if(temp != null) {
+					//if it's the opposite king
+					if(temp instanceof King) {
+						checkmate((char) temp.file, temp.rank);
+						return;
+					}
+					//Check down right
+					if(king.file != 'h') {
+						temp = board[king.rank - 1][fileToNum((char) (king.file + 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+					//Check down left
+					if(king.file != 'a') {
+						temp = board[king.rank - 1][fileToNum((char) (king.file - 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							checkmate((char) temp.file, temp.rank);
+							return;
+						}
+					}
+				}
+			}
+			//Check right
+			temp = board[king.rank][fileToNum((char) (king.file + 1))];
+			//if it's the opposite king
+			if(temp instanceof King) {
+				checkmate((char) temp.file, temp.rank);
+				return;
+			}
+			//Check left
+			temp = board[king.rank][fileToNum((char) (king.file - 1))];
+			//if it's the opposite king
+			if(temp instanceof King) {
+				checkmate((char) temp.file, temp.rank);
+				return;
+			}
+				
+		} //Something wrong
+		else {
+			throw new IllegalArgumentException();
+		}
 	}
 	
 	/**
 	 * This method is ran by the check function, if there is a check on the King, check to see if there is a checkmate. If there is, end game
 	 */
-	public static void checkmate() {
-		
+	public static void checkmate(char file, int rank) {
+		System.out.println("\nCheck");
 	}
 	
 	/**
