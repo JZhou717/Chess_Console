@@ -8,6 +8,8 @@ import java.util.Scanner;
 //Checkmate not implemented
 //Stalemate not implemented
 //Test check with all pieces
+//Fix Draw to just draw after request
+	//Execute move first, then draw, just remember that if the move results in checkmate, end the game, otherwise, print draw and the game is over
 
 //Fix comments
 
@@ -67,9 +69,11 @@ public class Chess {
 		while(!done) {
 			display();
 			
+			//Checking for stalemate
+			stalemate();
+			
 			while(!valid_input) {
-				//Checking for stalemate
-				stalemate();
+				
 				
 				//Resets the enpassant variables since enpassant is valid only immediately after the opponent has moved two steps with a pawn. Since white_enpassant stores a value only if white played a double step last turn and it is again white's turn, we reset it. Same thing for black
 				if(white_moves) {
@@ -93,23 +97,15 @@ public class Chess {
 						System.out.println("\nWhite wins");
 					}
 					in.close();
-					return;
-				}
-				if(asked_for_draw && input.equals("draw")) {
-					System.out.println("\ndraw");
-					in.close();
-					return;
-				}
-				else {
-					asked_for_draw = false;
+					System.exit(0);
 				}
 				
 				//loc - IS THE STARTING POSITION. 
 				//move_to - IS THE LOCATION THAT THE PIECE IS TO MOVE TO. 
-				//draw - IS EMPTY NORMALLY, UNLESS A PLAYER HAS ASKED FOR "draw?"
+				//third - IS EMPTY NORMALLY, UNLESS A PLAYER HAS ASKED FOR "draw?" or is promoting Pawn
 				String[] inputArray = input.split(" ", 3);
 				if(inputArray.length < 2) {
-					System.out.println("\nInvalid input line. Try again.");
+					System.out.println("\nIllegal move, try again");
 					continue;
 				}
 				loc = inputArray[0];
@@ -121,21 +117,18 @@ public class Chess {
 					}
 				}
 				
-				//This is just for testing, will remove later
-				//System.out.println("loc: " + loc + ". move_to: " + move_to + ". third: " + third);
-				
 				/*Part 1 code - Deals with proper starting position */
 				file = loc.charAt(0);
 				rank = Character.getNumericValue(loc.charAt(1));
 				if(file < 'a' || file > 'h'
 				|| rank < 1 || rank > 8
 						) {
-					System.out.println("\nInvalid file and/or rank for starting position.");
+					System.out.println("\nIllegal move, try again");
 					asked_for_draw = false;
 					continue;
 				}
 				if(board[rank][fileToNum(file)] == null) {
-					System.out.println("\nNo piece at indicated starting position.");
+					System.out.println("\nIllegal move, try again");
 					asked_for_draw = false;
 					continue;
 				}
@@ -150,7 +143,7 @@ public class Chess {
 				if(file < 'a' || file > 'h'
 				|| rank < 1 || rank > 8
 						) {
-					System.out.println("\nInvalid file and/or rank for move to position.");
+					System.out.println("\nIllegal move, try again");
 					asked_for_draw = false;
 					continue;
 				}
@@ -169,7 +162,7 @@ public class Chess {
 						else {
 							((White_Pawn) piece).promote("q");
 						}
-						check(file, rank);
+						piece.check();
 					}
 					if(piece instanceof Black_Pawn && rank == 1) {
 						if(third.equals("r")) {
@@ -184,11 +177,11 @@ public class Chess {
 						else {
 							((Black_Pawn) piece).promote("q");
 						}
-						check(file, rank);
+						piece.check();
 					}
 				} catch (IllegalArgumentException e) {
 					System.out.println("\nIllegal move, try again");
-					e.printStackTrace();
+					//e.printStackTrace();
 					asked_for_draw = false;
 					continue;
 				}
@@ -197,6 +190,13 @@ public class Chess {
 				//If nothing went wrong, we continue
 				valid_input = true;
 				System.out.println();
+			}
+			
+			//User asked for draw and the move was valid and executed
+			if(asked_for_draw) {
+				System.out.println("\ndraw");
+				in.close();
+				System.exit(0);
 			}
 			
 			//Reset these variables at the end of the turn
@@ -228,10 +228,10 @@ public class Chess {
 			piece.name = "w" + piece.name;
 			piece.white_side = true;
 		}
-		/*for(int j = 0; j < 8; j++) {
+		for(int j = 0; j < 8; j++) {
 			board[2][j] = new White_Pawn(numToFile(j), 2);
 			board[2][j].white_side = true;
-		}*/
+		}
 		
 		//Initializing black pieces
 		board[8][0] = new Rook('a', 8);
@@ -247,11 +247,12 @@ public class Chess {
 			piece.name = "b" + piece.name;
 			piece.white_side = false;
 		}
-		/*for(int j = 0; j < 8; j++) {
+		for(int j = 0; j < 8; j++) {
 			board[7][j] = new Black_Pawn(numToFile(j), 7);
 			board[7][j].white_side = false;
-		}*/
+		}
 	}
+	
 	/**
 	 * display() views the board 2D array and shows all the pieces that are in the board. Any position that is NULL instead of containing a piece will display blank or as ##.
 	 * This method will also print out the file numbers and the rank letters
@@ -298,13 +299,13 @@ public class Chess {
 			case 'f': return 5;
 			case 'g': return 6;
 			case 'h': return 7;
-			default: throw new IllegalArgumentException("Invalid File Char to conver to Num");
+			default: throw new IllegalArgumentException("Invalid File Char to convert to Num");
 		}
 		
 	}
 	
 	/**
-	 * This helper method takes an int and returns a String of one character for the file associated. Useful when referencing a position in the board 2D array
+	 * This helper method takes an int and returns a char for the file associated. Useful when referencing a position in the board 2D array
 	 * @param file - an int value associated with a column of the board 2D array
 	 * @return char value of the file name a-h. Throws an illegal argument exception if input is not valid
 	 * @author Jake
@@ -325,557 +326,57 @@ public class Chess {
 	}
 	
 	/**
-	 * This method is ran after every move to see if the opponent is now in check
-	 * @param char file, int rank - the file and rank of the piece that just moved. Checking to see if this piece is checking the opponent King
-	 * @return returns true if opponent in check, false otherwise
+	 * This helper functions creates a copy of the current board. This copy of the board is used in the putsOwnKingInCheck() method
+	 * @param none
+	 * @return a copy of the current board
 	 */
-	public static void check(char file, int rank) throws IllegalArgumentException{
-		Piece piece = board[rank][fileToNum(file)];
-		Piece temp = null;
+	public static Piece[][] copyBoard() {
+		Piece[][] board_copy = new Piece[9][8];
 		
-		//Check for check by white pawn
-		if(piece instanceof White_Pawn) {
-			
-			//If the pawn is in the last rank, it should have promoted
-			if(rank == 8) {
-				throw new IllegalArgumentException();
+		for(int r = 1; r < 9; r++) {
+			for(int f = 0; f < 8; f++) {
+				board_copy[r][f] = board[r][f];
 			}
-			
-			White_Pawn pawn = (White_Pawn) piece;
-			//a pawns only check one side
-			if(file == 'a') {
-				//checking up 1 right 1
-				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file + 1))];
-				if(temp != null) {
-					//checking if black King
-					if(temp.name.equals("bK")) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					}
-				}
-			} //h pawns only check one side
-			else if(file == 'h') {
-				//checking up 1 left 1
-				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file - 1))];
-				if(temp != null) {
-					//checking if black King
-					if(temp.name.equals("bK")) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					}
-				}
-			} //middle pawns check for two sides
-			else {
-				//checking up 1 right 1
-				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file + 1))];
-				if(temp != null) {
-					//checking if black King
-					if(temp.name.equals("bK")) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					}
-				}
-				//checking up 1 left 1
-				temp = board[pawn.rank + 1][fileToNum((char) (pawn.file - 1))];
-				if(temp != null) {
-					//checking if black King
-					if(temp.name.equals("bK")) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					}
-				}
-			}
-			
-		} //Check for check by black pawn
-		else if(piece instanceof Black_Pawn) {
-			
-			//If the pawn is in the last rank, it should have promoted
-			if(rank == 1) {
-				throw new IllegalArgumentException();
-			}
-			
-			Black_Pawn pawn = (Black_Pawn) piece;
-			//a pawns only check one side
-			if(file == 'a') {
-				//checking down 1 right 1
-				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file + 1))];
-				if(temp != null) {
-					//checking if white King
-					if(temp.name.equals("wK")) {
-						checkmate((char) (file + 1), rank - 1);
-						return;
-					}
-				}
-			} //h pawns only check one side
-			else if(file == 'h') {
-				//checking down 1 left 1
-				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file - 1))];
-				if(temp != null) {
-					//checking if white King
-					if(temp.name.equals("wK")) {
-						checkmate((char) (file - 1), rank - 1);
-						return;
-					}
-				}
-			} //middle pawns check for two sides
-			else {
-				//checking down 1 right 1
-				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file + 1))];
-				if(temp != null) {
-					//checking if white King
-					if(temp.name.equals("wK")) {
-						checkmate((char) (file + 1), rank - 1);
-						return;
-					}
-				}
-				//checking up 1 left 1
-				temp = board[pawn.rank - 1][fileToNum((char) (pawn.file - 1))];
-				if(temp != null) {
-					//checking if white King
-					if(temp.name.equals("wK")) {
-						checkmate((char) (file - 1), rank - 1);
-						return;
-					}
-				}
-			}
-			
-		} //Check for check by Rook
-		else if(piece instanceof Rook) {
-			
-			Rook rook = (Rook) piece;
-			
-			//Check for checks on the row to the left
-			for(int f = fileToNum(rook.file) - 1; f > 0; f--) {
-				temp = board[rook.rank][f];
-				if(temp != null) {
-					if(temp.white_side != rook.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			//Check for checks on the row to the right
-			for(int f = fileToNum(rook.file) + 1; f < 8; f++) {
-				temp = board[rook.rank][f];
-				if(temp != null) {
-					if(temp.white_side != rook.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			//Checks for checks on top
-			for(int r = rook.rank + 1; r < 9; r++) {
-				temp = board[r][fileToNum(rook.file)];
-				if(temp != null) {
-					if(temp.white_side != rook.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			//Check for checks below
-			for(int r = rook.rank - 1; r > 0; r--) {
-				temp = board[r][fileToNum(rook.file)];
-				if(temp != null) {
-					if(temp.white_side != rook.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			
-		} //Check for check by Knight
-		else if(piece instanceof Knight) {
-			
-			Knight knight = (Knight) piece;
-			
-			//Check 1st layer above 
-			if(knight.rank <= 7) {
-				//Check up-left one
-				if(knight.file >= 'c') {
-					temp = board[knight.rank + 1][fileToNum((char) (knight.file - 2))];
-					if(temp != null) {
-						if(temp.white_side != knight.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-				}
-				//Check up-right one
-				if(knight.file <= 'f') {
-					temp = board[knight.rank + 1][fileToNum((char) (knight.file + 2))];
-					if(temp != null) {
-						if(temp.white_side != knight.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-				}
-				//Check 2nd layer above
-				if(knight.rank <= 6) {
-					//Check up-left two
-					if(knight.file >= 'b') {
-						temp = board[knight.rank + 2][fileToNum((char) (knight.file - 1))];
-						if(temp != null) {
-							if(temp.white_side != knight.white_side && temp instanceof King) {
-								checkmate((char) temp.file, temp.rank);
-								return;
-							}
-						}
-					}
-					//Check up-right two
-					if(knight.file <= 'g') {
-						temp = board[knight.rank + 2][fileToNum((char) (knight.file + 1))];
-						if(temp != null) {
-							if(temp.white_side != knight.white_side && temp instanceof King) {
-								checkmate((char) temp.file, temp.rank);
-								return;
-							}
-						}
-					}
-				}
-			}
-			//Check 1st layer below 
-			if(knight.rank >= 2) {
-				//Check down-left one
-				if(knight.file >= 'c') {
-					temp = board[knight.rank - 1][fileToNum((char) (knight.file - 2))];
-					if(temp != null) {
-						if(temp.white_side != knight.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-				}
-				//Check down-right one
-				if(knight.file <= 'f') {
-					temp = board[knight.rank - 1][fileToNum((char) (knight.file + 2))];
-					if(temp != null) {
-						if(temp.white_side != knight.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-				}
-				//Check 2nd layer below
-				if(knight.rank >= 3) {
-					//Check down-left two
-					if(knight.file >= 'b') {
-						temp = board[knight.rank - 2][fileToNum((char) (knight.file - 1))];
-						if(temp != null) {
-							if(temp.white_side != knight.white_side && temp instanceof King) {
-								checkmate((char) temp.file, temp.rank);
-								return;
-							}
-						}
-					}
-					//Check down-right two
-					if(knight.file <= 'g') {
-						temp = board[knight.rank - 2][fileToNum((char) (knight.file + 1))];
-						if(temp != null) {
-							if(temp.white_side != knight.white_side && temp instanceof King) {
-								checkmate((char) temp.file, temp.rank);
-								return;
-							}
-						}
-					}
-				}
-			}
-			
-		} //Check for check by Bishop
-		else if(piece instanceof Bishop) {
-			
-			Bishop bishop = (Bishop) piece;
-			
-			//Check up
-			for(int r = bishop.rank + 1; r < 9; r++) {
-				//Check right
-				for(int f = fileToNum((char) (bishop.file + 1)); f < 8; f++) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != bishop.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-				//Check left
-				for(int f = fileToNum((char) (bishop.file - 1)); f > 0; f--) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != bishop.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-			}
-			//Check down
-			for(int r = bishop.rank - 1; r > 0; r--) {
-				//Check right
-				for(int f = fileToNum((char) (bishop.file + 1)); f < 8; f++) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != bishop.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-				//Check left
-				for(int f = fileToNum((char) (bishop.file - 1)); f > 0; f--) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != bishop.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-			}
-			
-		} //Check for check by Queen
-		else if(piece instanceof Queen) {
-			
-			Queen queen = (Queen) piece;
-			
-			//Check for checks on the row to the left
-			for(int f = fileToNum(queen.file) - 1; f > 0; f--) {
-				temp = board[queen.rank][f];
-				if(temp != null) {
-					if(temp.white_side != queen.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			//Check for checks on the row to the right
-			for(int f = fileToNum(queen.file) + 1; f < 8; f++) {
-				temp = board[queen.rank][f];
-				if(temp != null) {
-					if(temp.white_side != queen.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			//Checks for checks on top
-			for(int r = queen.rank + 1; r < 9; r++) {
-				temp = board[r][fileToNum(queen.file)];
-				if(temp != null) {
-					if(temp.white_side != queen.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			//Check for checks below
-			for(int r = queen.rank - 1; r > 0; r--) {
-				temp = board[r][fileToNum(queen.file)];
-				if(temp != null) {
-					if(temp.white_side != queen.white_side && temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					} //Piece blocking king
-					else {
-						break;
-					}
-				}
-			}
-			//Check up diagonals
-			for(int r = queen.rank + 1; r < 9; r++) {
-				//Check right
-				for(int f = fileToNum((char) (queen.file + 1)); f < 8; f++) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != queen.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-				//Check left
-				for(int f = fileToNum((char) (queen.file - 1)); f > 0; f--) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != queen.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-			}
-			//Check down diagonals
-			for(int r = queen.rank - 1; r > 0; r--) {
-				//Check right
-				for(int f = fileToNum((char) (queen.file + 1)); f < 8; f++) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != queen.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-				//Check left
-				for(int f = fileToNum((char) (queen.file - 1)); f > 0; f--) {
-					temp = board[r][f];
-					//Piece on diagonal
-					if(temp != null) {
-						if(temp.white_side != queen.white_side && temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						} //Piece blocking king
-						else {
-							break;
-						}
-					}
-				}
-			}
-			
-		} //Check for check by King
-		else if(piece instanceof King) {
-			
-			King king = (King) piece;
-			
-			//Check above
-			if(king.rank != 8) {
-				
-				//Check up center
-				temp = board[king.rank + 1][fileToNum(king.file)];
-				if(temp != null) {
-					//if it's the opposite king
-					if(temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					}
-					//Check up right
-					if(king.file != 'h') {
-						temp = board[king.rank + 1][fileToNum((char) (king.file + 1))];
-						//if it's the opposite king
-						if(temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-					//Check up left
-					if(king.file != 'a') {
-						temp = board[king.rank + 1][fileToNum((char) (king.file - 1))];
-						//if it's the opposite king
-						if(temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-				}
-				
-			}
-			//Check below
-			if(king.rank != 1) {
-				
-				//Check down center
-				temp = board[king.rank - 1][fileToNum(king.file)];
-				if(temp != null) {
-					//if it's the opposite king
-					if(temp instanceof King) {
-						checkmate((char) temp.file, temp.rank);
-						return;
-					}
-					//Check down right
-					if(king.file != 'h') {
-						temp = board[king.rank - 1][fileToNum((char) (king.file + 1))];
-						//if it's the opposite king
-						if(temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-					//Check down left
-					if(king.file != 'a') {
-						temp = board[king.rank - 1][fileToNum((char) (king.file - 1))];
-						//if it's the opposite king
-						if(temp instanceof King) {
-							checkmate((char) temp.file, temp.rank);
-							return;
-						}
-					}
-				}
-			}
-			//Check right
-			temp = board[king.rank][fileToNum((char) (king.file + 1))];
-			//if it's the opposite king
-			if(temp instanceof King) {
-				checkmate((char) temp.file, temp.rank);
-				return;
-			}
-			//Check left
-			temp = board[king.rank][fileToNum((char) (king.file - 1))];
-			//if it's the opposite king
-			if(temp instanceof King) {
-				checkmate((char) temp.file, temp.rank);
-				return;
-			}
-				
-		} //Something wrong
-		else {
-			throw new IllegalArgumentException();
 		}
+		
+		return board_copy;
 	}
 	
 	/**
-	 * This method is ran by the check function, if there is a check on the King, check to see if there is a checkmate. If there is, end game
+	 * This help method takes in a temporary board and checks to see if the King of the side playing is in check in this temporary board
+	 * This is a method that is called by every piece before the move is committed since it has to ensure that the move does not place the same side's King in check
+	 * @param takes in a board after a move has been made
+	 * @return returns true if the input board has the current side's King in chess, meaning the last move was illegal, otherwise returns false
 	 */
-	public static void checkmate(char file, int rank) {
+	public static boolean putsOwnKingInCheck(Piece[][] board) {
+		
+		Piece temp;
+		
+		//Going through all the ranks
+		for(int r = 1; r < 9; r++) {
+			//Going through all the files
+			for(int f = 0; f < 8; f++) {
+				//If there is a piece in this spot
+				if(board[r][f] != null) {
+					temp = board[r][f];
+					//If the piece is an opponent
+					if(temp.white_side != white_moves) {
+						if(temp.check()) {
+							//if the move in the input board has current side's King in check
+							return true;
+						}
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * This method is ran by each piece's check function, if there is a check on the King, check to see if there is a checkmate. If there is, end game, otherwise just print check
+	 */
+	public static void checkmate() {
 		System.out.println("\nCheck");
 	}
 	
@@ -888,7 +389,7 @@ public class Chess {
 	
 	/**
 	 * This is the abstract class that all pieces will extend. Each piece must store a String of its name, a char of its file (a-h), an int of its rank (1-8), and a boolean for its side: white_side == true for white false for black
-	 * Each piece must also implement the move method.
+	 * Each piece must also implement the move method and the check method.
 	 * @param String input - the input string from the user. Each piece will check the input itself to see if valid for that piece
 	 * @author Jake
 	 *
@@ -899,6 +400,7 @@ public class Chess {
 		int rank;
 		boolean white_side;
 		abstract void move(String move_to) throws IllegalArgumentException;
+		abstract boolean check();
 	}
 	
 	/**
@@ -922,7 +424,9 @@ public class Chess {
 				throw new IllegalArgumentException();
 			}
 			char move_file = move_to.toLowerCase().charAt(0);
-			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			int move_rank = Character.getNumericValue(move_to.charAt(1));
+			
+			Piece[][] board_copy = copyBoard();
 			
 			if(move_file != this.file) {
 				//System.out.println("Pawn moving to different file");		
@@ -933,14 +437,31 @@ public class Chess {
 					if(board[this.rank + 1][fileToNum(this.file) + 1] == null) {
 						//Checking for Enpassant
 						if(move_file == black_enpassant && move_rank == 6) {
+							//Checking on board copy first
+							int saved_rank = this.rank;
+							char saved_file = this.file;
+							//Removing the black pawn
+							board_copy[this.rank][fileToNum(this.file) + 1] = null;
+							//Moving
+							board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							if(putsOwnKingInCheck(board_copy)) {
+								this.rank = saved_rank;
+								this.file = saved_file;
+								throw new IllegalArgumentException();
+							}
+							
+							//Actual move
 							//Removing the black pawn
 							board[this.rank][fileToNum(this.file) + 1] = null;
 							//Moving
 							board[this.rank + 1][fileToNum(this.file) + 1] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
-							this.rank = move_rank;
-							this.file = move_file;
-							check(this.file, this.rank);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						}
 						else {
@@ -951,12 +472,26 @@ public class Chess {
 					if(board[this.rank + 1][fileToNum(this.file) + 1].white_side == true) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving
 					board[this.rank + 1][fileToNum(this.file) + 1] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} else if (move_file == (this.file - 1) && move_rank == (this.rank + 1)) {
 					//System.out.println("Pawn moving up-left");
@@ -964,14 +499,29 @@ public class Chess {
 					if(board[this.rank + 1][fileToNum(this.file) - 1] == null) {
 						//Checking for Enpassant
 						if(move_file == black_enpassant && move_rank == 6) {
+							//Checking on board copy first
+							int saved_rank = this.rank;
+							char saved_file = this.file;
+							board_copy[this.rank][fileToNum(this.file) - 1] = null;
+							
+							board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							if(putsOwnKingInCheck(board_copy)) {
+								this.rank = saved_rank;
+								this.file = saved_file;
+								throw new IllegalArgumentException();
+							}
+							
 							//Removing the black pawn
 							board[this.rank][fileToNum(this.file) - 1] = null;
 							//Moving
 							board[this.rank + 1][fileToNum(this.file) - 1] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
-							this.rank = move_rank;
-							this.file = move_file;
-							check(this.file, this.rank);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						}
 						else {
@@ -982,12 +532,26 @@ public class Chess {
 					if(board[this.rank + 1][fileToNum(this.file) - 1].white_side == true) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving
 					board[this.rank + 1][fileToNum(this.file) - 1] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} else {
 					//System.out.println("Something wrong");
@@ -999,24 +563,54 @@ public class Chess {
 					if(board[this.rank + 1][fileToNum(this.file)] != null) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving piece
 					board[this.rank + 1][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
-				} else if(move_rank == rank + 2 && this.rank == 2) {
+				} else if(move_rank == this.rank + 2 && this.rank == 2) {
 					//Checking to see if path clear
 					if(board[this.rank + 1][fileToNum(this.file)] != null 
 					|| board[this.rank + 2][fileToNum(this.file)] != null) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving piece
 					board[this.rank + 2][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
 					white_enpassant = this.file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} else {
 					throw new IllegalArgumentException();
@@ -1025,32 +619,91 @@ public class Chess {
 
 		}
 		
+		boolean check() {
+			
+			Piece temp;
+			
+			//If the pawn is in the last rank, it should have promoted
+			if(this.rank == 8) {
+				throw new IllegalArgumentException();
+			}
+			//a pawns only check one side
+			if(this.file == 'a') {
+				//checking up 1 right 1
+				temp = board[this.rank + 1][fileToNum((char) (this.file + 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					}
+				}
+			} //h pawns only check one side
+			else if(this.file == 'h') {
+				//checking up 1 left 1
+				temp = board[this.rank + 1][fileToNum((char) (this.file - 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					}
+				}
+			} //middle pawns check for two sides
+			else {
+				//checking up 1 right 1
+				temp = board[this.rank + 1][fileToNum((char) (this.file + 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						//checkmate((char) temp.file, temp.rank);
+						return true;
+					}
+				}
+				//checking up 1 left 1
+				temp = board[this.rank + 1][fileToNum((char) (this.file - 1))];
+				if(temp != null) {
+					//checking if black King
+					if(temp.name.equals("bK")) {
+						//checkmate((char) temp.file, temp.rank);
+						return true;
+					}
+				}
+			}
+			
+			return false;
+		}
+		
 		void promote(String promote_to) throws IllegalArgumentException{
 			if(promote_to.equals("r")) {
 				Piece newPiece = new Rook(this.file, this.rank);
 				newPiece.name = "w" + newPiece.name;
+				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} 
 			else if(promote_to.equals("n")) {
 				Piece newPiece = new Knight(this.file, this.rank);
 				newPiece.name = "w" + newPiece.name;
+				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} 
 			else if(promote_to.equals("b")) {
 				Piece newPiece = new Bishop(this.file, this.rank);
 				newPiece.name = "w" + newPiece.name;
+				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} 
 			else if(promote_to.equals("q")) {
 				Piece newPiece = new Queen(this.file, this.rank);
 				newPiece.name = "w" + newPiece.name;
+				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} else {
-				throw new IllegalArgumentException("Error. Invalid input for promote");
+				throw new IllegalArgumentException();
 			}
 		}
 	}
@@ -1067,8 +720,10 @@ public class Chess {
 				throw new IllegalArgumentException();
 			}
 			char move_file = move_to.toLowerCase().charAt(0);
+			int move_rank = Character.getNumericValue(move_to.charAt(1));
 			
-			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			Piece[][] board_copy = copyBoard();
+			
 			if(move_file != this.file) {
 				//System.out.println("Pawn moving to different file");		
 				//If the designated move is not in this file, then we have to see if it is an attempt to capture
@@ -1078,14 +733,29 @@ public class Chess {
 					if(board[this.rank - 1][fileToNum(this.file) + 1] == null) {
 						//Checking for Enpassant
 						if(move_file == white_enpassant && move_rank == 3) {
+							//Checking on board copy first
+							int saved_rank = this.rank;
+							char saved_file = this.file;
+							board_copy[this.rank][fileToNum(this.file) + 1] = null;
+							
+							board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							if(putsOwnKingInCheck(board_copy)) {
+								this.rank = saved_rank;
+								this.file = saved_file;
+								throw new IllegalArgumentException();
+							}
+							
 							//Removing the white pawn
 							board[this.rank][fileToNum(this.file) + 1] = null;
 							//Moving
 							board[this.rank - 1][fileToNum(this.file) + 1] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
-							this.rank = move_rank;
-							this.file = move_file;
-							check(this.file, this.rank);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						}
 						else {
@@ -1096,12 +766,26 @@ public class Chess {
 					if(board[this.rank - 1][fileToNum(this.file) + 1].white_side == false) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving
 					board[this.rank - 1][fileToNum(this.file) + 1] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} else if (move_file == (this.file - 1) && move_rank == (this.rank - 1)) {
 					//System.out.println("Pawn moving down-left");
@@ -1109,14 +793,29 @@ public class Chess {
 					if(board[this.rank - 1][fileToNum(this.file) - 1] == null) {
 						//Checking for Enpassant
 						if(move_file == white_enpassant && move_rank == 3) {
+							//Checking on board copy first
+							int saved_rank = this.rank;
+							char saved_file = this.file;
+							board_copy[this.rank][fileToNum(this.file) - 1] = null;
+							
+							board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							this.rank = move_rank;
+							this.file = move_file;
+							if(putsOwnKingInCheck(board_copy)) {
+								this.rank = saved_rank;
+								this.file = saved_file;
+								throw new IllegalArgumentException();
+							}
+							
 							//Removing the black pawn
 							board[this.rank][fileToNum(this.file) - 1] = null;
 							//Moving
 							board[this.rank - 1][fileToNum(this.file) - 1] = board[this.rank][fileToNum(this.file)];
 							board[this.rank][fileToNum(this.file)] = null;
-							this.rank = move_rank;
-							this.file = move_file;
-							check(this.file, this.rank);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						}
 						else {
@@ -1127,12 +826,26 @@ public class Chess {
 					if(board[this.rank - 1][fileToNum(this.file) - 1].white_side == false) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving
 					board[this.rank - 1][fileToNum(this.file) - 1] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} else {
 					//System.out.println("Something wrong");
@@ -1144,11 +857,26 @@ public class Chess {
 					if(board[this.rank - 1][fileToNum(this.file)] != null) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving piece
 					board[this.rank - 1][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving 2 spaces
 				else if(move_rank == rank - 2 && this.rank == 7) {
@@ -1157,12 +885,27 @@ public class Chess {
 					|| board[this.rank - 2][fileToNum(this.file)] != null) {
 						throw new IllegalArgumentException();
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving piece
 					board[this.rank - 2][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
 					black_enpassant = this.file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} 
 				else {
@@ -1172,32 +915,92 @@ public class Chess {
 
 		}
 		
+		boolean check() {
+			
+			Piece temp;
+			
+			//If the pawn is in the last rank, it should have promoted
+			if(this.rank == 1) {
+				throw new IllegalArgumentException();
+			}
+			
+			//a pawns only check one side
+			if(this.file == 'a') {
+				//checking down 1 right 1
+				temp = board[this.rank - 1][fileToNum((char) (this.file + 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					}
+				}
+			} //h pawns only check one side
+			else if(this.file == 'h') {
+				//checking down 1 left 1
+				temp = board[this.rank - 1][fileToNum((char) (this.file - 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					}
+				}
+			} //middle pawns check for two sides
+			else {
+				//checking down 1 right 1
+				temp = board[this.rank - 1][fileToNum((char) (this.file + 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					}
+				}
+				//checking down 1 left 1
+				temp = board[this.rank - 1][fileToNum((char) (this.file - 1))];
+				if(temp != null) {
+					//checking if white King
+					if(temp.name.equals("wK")) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					}
+				}
+			}
+			
+			return false;
+		}
+		
 		void promote(String promote_to) throws IllegalArgumentException{
 			if(promote_to.equals("r")) {
 				Piece newPiece = new Rook(this.file, this.rank);
 				newPiece.name = "b" + newPiece.name;
+				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} 
 			else if(promote_to.equals("n")) {
 				Piece newPiece = new Knight(this.file, this.rank);
 				newPiece.name = "b" + newPiece.name;
+				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} 
 			else if(promote_to.equals("b")) {
 				Piece newPiece = new Bishop(this.file, this.rank);
 				newPiece.name = "b" + newPiece.name;
+				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} 
 			else if(promote_to.equals("q")) {
 				Piece newPiece = new Queen(this.file, this.rank);
 				newPiece.name = "b" + newPiece.name;
+				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				check(this.file, this.rank);
+				newPiece.check();
 			} else {
-				throw new IllegalArgumentException("Error. Invalid input for promote");
+				throw new IllegalArgumentException();
 			}
 		}
 	}
@@ -1212,12 +1015,15 @@ public class Chess {
 			this.rank = rank;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
+
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
 			char move_file = move_to.toLowerCase().charAt(0);
-			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			int move_rank = Character.getNumericValue(move_to.charAt(1));
+			
+			Piece[][] board_copy = copyBoard();
 			
 			//If trying to move to the same spot
 			if(move_file == this.file && move_rank == this.rank) {
@@ -1242,13 +1048,27 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
 					this.has_moved = true;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving down the board
 				else {
@@ -1265,13 +1085,27 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
 					this.has_moved = true;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				}
 			} //Moving along the rank
@@ -1291,13 +1125,27 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
 					this.has_moved = true;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving to the left
 				else {
@@ -1314,33 +1162,111 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
 					this.has_moved = true;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				}
 			}
 			
 		}
+		
+		boolean check() {
+			
+			Piece temp;
+			
+			//Check for checks on the row to the left
+			for(int f = fileToNum(this.file) - 1; f >= 0; f--) {
+				temp = board[this.rank][f];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks on the row to the right
+			for(int f = fileToNum(this.file) + 1; f < 8; f++) {
+				temp = board[this.rank][f];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Checks for checks on top
+			for(int r = this.rank + 1; r < 9; r++) {
+				temp = board[r][fileToNum(this.file)];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks below
+			for(int r = this.rank - 1; r > 0; r--) {
+				temp = board[r][fileToNum(this.file)];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			
+			return false;
+		}
 	}
 	
 	public static class Knight extends Piece {
+		
 		public Knight(char file, int rank) {
 			this.name = "N";
 			this.file = file;
 			this.rank = rank;
 		}
+		
 		void move(String move_to)  throws IllegalArgumentException{
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
 			char move_file = move_to.toLowerCase().charAt(0);
-			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			int move_rank = Character.getNumericValue(move_to.charAt(1));
+			
+			Piece[][] board_copy = copyBoard();
 			
 			//If trying to move to the same spot
 			if(move_file == this.file && move_rank == this.rank) {
@@ -1356,12 +1282,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Invalid move
 				else {
@@ -1378,12 +1318,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Invalid move
 				else {
@@ -1395,22 +1349,128 @@ public class Chess {
 			}
 			
 		}
+		
+		boolean check() {
+			
+			Piece temp;
+			
+			//Check 1st layer above 
+			if(this.rank <= 7) {
+				//Check up-left one
+				if(this.file >= 'c') {
+					temp = board[this.rank + 1][fileToNum((char) (this.file - 2))];
+					if(temp != null) {
+						if(temp.white_side != this.white_side && temp instanceof King) {
+							//checkmate(temp.file, temp.rank);
+							return true;
+						}
+					}
+				}
+				//Check up-right one
+				if(this.file <= 'f') {
+					temp = board[this.rank + 1][fileToNum((char) (this.file + 2))];
+					if(temp != null) {
+						if(temp.white_side != this.white_side && temp instanceof King) {
+							//checkmate(temp.file, temp.rank);
+							return true;
+						}
+					}
+				}
+				//Check 2nd layer above
+				if(this.rank <= 6) {
+					//Check up-left two
+					if(this.file >= 'b') {
+						temp = board[this.rank + 2][fileToNum((char) (this.file - 1))];
+						if(temp != null) {
+							if(temp.white_side != this.white_side && temp instanceof King) {
+								//checkmate(temp.file, temp.rank);
+								return true;
+							}
+						}
+					}
+					//Check up-right two
+					if(this.file <= 'g') {
+						temp = board[this.rank + 2][fileToNum((char) (this.file + 1))];
+						if(temp != null) {
+							if(temp.white_side != this.white_side && temp instanceof King) {
+								//checkmate(temp.file, temp.rank);
+								return true;
+							}
+						}
+					}
+				}
+			}
+			//Check 1st layer below 
+			if(this.rank >= 2) {
+				//Check down-left one
+				if(this.file >= 'c') {
+					temp = board[this.rank - 1][fileToNum((char) (this.file - 2))];
+					if(temp != null) {
+						if(temp.white_side != this.white_side && temp instanceof King) {
+							//checkmate(temp.file, temp.rank);
+							return true;
+						}
+					}
+				}
+				//Check down-right one
+				if(this.file <= 'f') {
+					temp = board[this.rank - 1][fileToNum((char) (this.file + 2))];
+					if(temp != null) {
+						if(temp.white_side != this.white_side && temp instanceof King) {
+							//checkmate(temp.file, temp.rank);
+							return true;
+						}
+					}
+				}
+				//Check 2nd layer below
+				if(this.rank >= 3) {
+					//Check down-left two
+					if(this.file >= 'b') {
+						temp = board[this.rank - 2][fileToNum((char) (this.file - 1))];
+						if(temp != null) {
+							if(temp.white_side != this.white_side && temp instanceof King) {
+								//checkmate(temp.file, temp.rank);
+								return true;
+							}
+						}
+					}
+					//Check down-right two
+					if(this.file <= 'g') {
+						temp = board[this.rank - 2][fileToNum((char) (this.file + 1))];
+						if(temp != null) {
+							if(temp.white_side != this.white_side && temp instanceof King) {
+								//checkmate(temp.file, temp.rank);
+								return true;
+							}
+						}
+					}
+				}
+			}
+			
+			return false;
+		}
 	}
 	
 	public static class Bishop extends Piece {
+		
 		public Bishop(char file, int rank) {
 			this.name = "B";
 			this.file = file;
 			this.rank = rank;
 		}
+		
 		void move(String move_to)  throws IllegalArgumentException{
-			//System.out.println("TESTING IN BISHOP MOVE");
+			
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
+			
 			char move_file = move_to.toLowerCase().charAt(0);
-			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			int move_rank = Character.getNumericValue(move_to.charAt(1));
+			
+			Piece[][] board_copy = copyBoard();
+			
 			//If trying to move to the same spot
 			if(move_file == this.file && move_rank == this.rank) {
 				throw new IllegalArgumentException();
@@ -1437,12 +1497,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving up left
 				else if(move_file < this.file && move_rank > this.rank) {
@@ -1461,12 +1535,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving down right
 				else if(move_file > this.file && move_rank < this.rank) {
@@ -1485,12 +1573,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving down left
 				else if(move_file < this.file && move_rank < this.rank){
@@ -1509,12 +1611,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Something's wrong
 				else {
@@ -1523,21 +1639,106 @@ public class Chess {
 				}
 			}
 		}
+		
+		boolean check() {
+			
+			Piece temp;
+			
+			//Check up-right
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file + (r - this.rank)));
+				if(f > 7) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check up-left
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file - (r - this.rank)));
+				if(f < 0) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check down-right
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file + (this.rank - r)));
+				if(f > 7) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check down-left
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file - (this.rank - r)));
+				if(f < 0) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			
+			return false;
+		}
 	}
 	
 	public static class Queen extends Piece {
+		
 		public Queen(char file, int rank) {
 			this.name = "Q";
 			this.file = file;
 			this.rank = rank;
 		}
+		
 		void move(String move_to)  throws IllegalArgumentException{
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
+			
 			char move_file = move_to.toLowerCase().charAt(0);
-			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			int move_rank = Character.getNumericValue(move_to.charAt(1));
+			
+			Piece[][] board_copy = copyBoard();
 			
 			//If trying to move to the same spot
 			if(move_file == this.file && move_rank == this.rank) {
@@ -1559,12 +1760,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
-					//Moving to position
-					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
-					board[this.rank][fileToNum(this.file)] = null;
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					check(this.file, this.rank);
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving down
 				else {
@@ -1581,12 +1796,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
-					//Moving to position
-					board[move_rank][fileToNum(this.file)] = board[this.rank][fileToNum(this.file)];
-					board[this.rank][fileToNum(this.file)] = null;
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					check(this.file, this.rank);
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				}
 			} //Moving horizontally
@@ -1606,12 +1835,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
-					//Moving to position
-					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
-					board[this.rank][fileToNum(this.file)] = null;
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					check(this.file, this.rank);
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving left
 				else {
@@ -1628,12 +1871,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
-					//Moving to position
-					board[this.rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
-					board[this.rank][fileToNum(this.file)] = null;
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					check(this.file, this.rank);
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
+					//Moving to position
+					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
+					board[this.rank][fileToNum(this.file)] = null;
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				}
 			} //Moving diagonally
@@ -1653,12 +1910,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving up-left
 				else if(move_file < this.file && move_rank > this.rank) {
@@ -1675,12 +1946,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving down-right
 				else if(move_file > this.file && move_rank < this.rank) {
@@ -1697,12 +1982,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Moving down left
 				else if(move_file < this.file && move_rank < this.rank) {
@@ -1719,12 +2018,26 @@ public class Chess {
 							throw new IllegalArgumentException();
 						}
 					}
+					//Checking on board copy first
+					int saved_rank = this.rank;
+					char saved_file = this.file;
+					
+					board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					this.rank = move_rank;
+					this.file = move_file;
+					if(putsOwnKingInCheck(board_copy)) {
+						this.rank = saved_rank;
+						this.file = saved_file;
+						throw new IllegalArgumentException();
+					}
+					
 					//Moving to position
 					board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
 					board[this.rank][fileToNum(this.file)] = null;
-					this.rank = move_rank;
-					this.file = move_file;
-					check(this.file, this.rank);
+					if(this.check()) {
+						checkmate();
+					}
 					return;
 				} //Invalid move
 				else {
@@ -1734,6 +2047,140 @@ public class Chess {
 			else {
 				throw new IllegalArgumentException();
 			}
+			
+		}
+		
+		boolean check() {
+			
+			Piece temp;
+			
+			//Check for checks on the row to the left
+			for(int f = fileToNum(this.file) - 1; f >= 0; f--) {
+				temp = board[this.rank][f];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks on the row to the right
+			for(int f = fileToNum(this.file) + 1; f < 8; f++) {
+				temp = board[this.rank][f];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Checks for checks on top
+			for(int r = this.rank + 1; r < 9; r++) {
+				temp = board[r][fileToNum(this.file)];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check for checks below
+			for(int r = this.rank - 1; r > 0; r--) {
+				temp = board[r][fileToNum(this.file)];
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			
+			//Check up-right
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file + (r - this.rank)));
+				if(f > 7) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check up-left
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file - (r - this.rank)));
+				if(f < 0) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check down-right
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file + (this.rank - r)));
+				if(f > 7) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+			//Check down-left
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file - (this.rank - r)));
+				if(f < 0) {
+					break;
+				}
+				temp = board[r][f];
+				//Piece on diagonal
+				if(temp != null) {
+					if(temp.white_side != this.white_side && temp instanceof King) {
+						//checkmate(temp.file, temp.rank);
+						return true;
+					} //Piece blocking king
+					else {
+						break;
+					}
+				}
+			}
+		
+			return false;
 			
 		}
 	}
@@ -1747,14 +2194,16 @@ public class Chess {
 			this.file = file;
 			this.rank = rank;
 		}
+		
 		void move(String move_to)  throws IllegalArgumentException{
 			
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
 				throw new IllegalArgumentException();
 			}
+			
 			char move_file = move_to.toLowerCase().charAt(0);
-			int move_rank = Integer.parseInt(move_to.substring(1,2));
+			int move_rank = Character.getNumericValue(move_to.charAt(1));
 			
 			//If trying to move to the same spot
 			if(move_file == this.file && move_rank == this.rank) {
@@ -1764,13 +2213,10 @@ public class Chess {
 				throw new IllegalArgumentException();
 			} //Valid move
 			else {
+				
 				//Creating a copy of the board to brute force test if this move will put King in check
-				Piece[][] board_copy = new Piece[9][8];
-				for(int r = 1; r < 9; r++) {
-					for(int f = 0; f < 8; f++) {
-						board_copy[r][f] = board[r][f];
-					}
-				}
+				Piece[][] board_copy = copyBoard();
+				
 				//Moving up-center
 				if(move_file == this.file && move_rank == this.rank + 1) {
 					
@@ -1797,8 +2243,9 @@ public class Chess {
 					
 				} //Trying to move twice in one direction
 				else {
+					
 					//Check for castling
-					//If it's the white king
+					//If it's the white king castling
 					if(this.white_side) {
 						//Trying to castle kingside
 						if(move_to.equals("g1")) {
@@ -1811,7 +2258,7 @@ public class Chess {
 								throw new IllegalArgumentException();
 							}
 							if(!board[1][fileToNum('h')].name.equals("wR")) {
-								System.out.println("TESTING: NAME: " + board[1][fileToNum('h')].name);
+								//System.out.println("TESTING: NAME: " + board[1][fileToNum('h')].name);
 								throw new IllegalArgumentException();
 							}
 							if(((Rook) board[1][fileToNum('h')]).has_moved == true) {
@@ -1827,30 +2274,14 @@ public class Chess {
 							//Checking for f1 space
 							board_copy[1][fileToNum('f')] = board_copy[1][fileToNum('e')];
 							board_copy[1][fileToNum('e')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Checking for g1 space
 							board_copy[1][fileToNum('g')] = board_copy[1][fileToNum('f')];
 							board_copy[1][fileToNum('f')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Moving King
 							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
@@ -1864,7 +2295,9 @@ public class Chess {
 							board[1][fileToNum('f')].rank = 1;
 							board[1][fileToNum('f')].file = 'f';
 							((Rook) board[1][fileToNum('f')]).has_moved = true;
-							check('f', 1);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						} //Trying to castle queenside
 						else if(move_to.equals("c1")) {
@@ -1892,30 +2325,14 @@ public class Chess {
 							//Checking for d1 space
 							board_copy[1][fileToNum('d')] = board_copy[1][fileToNum('e')];
 							board_copy[1][fileToNum('e')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Checking for c1 space
 							board_copy[1][fileToNum('c')] = board_copy[1][fileToNum('d')];
 							board_copy[1][fileToNum('d')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Moving King
 							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
@@ -1929,15 +2346,15 @@ public class Chess {
 							board[1][fileToNum('d')].rank = 1;
 							board[1][fileToNum('d')].file = 'd';
 							((Rook) board[1][fileToNum('d')]).has_moved = true;
-							check('d', 1);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						} //Invalid move
 						else {
 							throw new IllegalArgumentException();
 						}
-						
-						
-					} //If it is the black king
+					} //If it is the black king castling
 					else {
 						//Trying to castle kingside
 						if(move_to.equals("g8")) {
@@ -1965,30 +2382,14 @@ public class Chess {
 							//Checking for f8 space
 							board_copy[8][fileToNum('f')] = board_copy[8][fileToNum('e')];
 							board_copy[8][fileToNum('e')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Checking for g1 space
 							board_copy[8][fileToNum('g')] = board_copy[1][fileToNum('f')];
 							board_copy[8][fileToNum('f')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Moving King
 							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
@@ -2002,7 +2403,9 @@ public class Chess {
 							board[8][fileToNum('f')].rank = 8;
 							board[8][fileToNum('f')].file = 'f';
 							((Rook) board[8][fileToNum('f')]).has_moved = true;
-							check('f', 8);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						} //Trying to castle queenside
 						else if(move_to.equals("c8")) {
@@ -2030,30 +2433,14 @@ public class Chess {
 							//Checking for d8 space
 							board_copy[8][fileToNum('d')] = board_copy[8][fileToNum('e')];
 							board_copy[8][fileToNum('e')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Checking for c8 space
 							board_copy[8][fileToNum('c')] = board_copy[8][fileToNum('d')];
 							board_copy[8][fileToNum('d')] = null;
-							for(int r = 1; r < 9; r++) {
-								for(int f = 0; f < 8; f++) {
-									//If there is a piece in this spot
-									if(board_copy[r][f] != null) {
-										//If the piece is an opponent
-										if(board_copy[r][f].white_side != this.white_side) {
-											check(numToFile(f), r);
-										}
-									}
-								}
+							if(putsOwnKingInCheck(board_copy)) {
+								throw new IllegalArgumentException();
 							}
 							//Moving King
 							board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
@@ -2067,7 +2454,9 @@ public class Chess {
 							board[8][fileToNum('d')].rank = 8;
 							board[8][fileToNum('d')].file = 'd';
 							((Rook) board[8][fileToNum('d')]).has_moved = true;
-							check('d', 8);
+							if(this.check()) {
+								checkmate();
+							}
 							return;
 						} //Invalid move
 						else {
@@ -2088,16 +2477,8 @@ public class Chess {
 				board_copy[move_rank][fileToNum(move_file)] = board_copy[this.rank][fileToNum(this.file)];
 				board_copy[this.rank][fileToNum(this.file)] = null;
 				//Checking for checks
-				for(int r = 1; r < 9; r++) {
-					for(int f = 0; f < 8; f++) {
-						//If there is a piece in this spot
-						if(board_copy[r][f] != null) {
-							//If the piece is an opponent
-							if(board_copy[r][f].white_side != this.white_side) {
-								check(numToFile(f), r);
-							}
-						}
-					}
+				if(putsOwnKingInCheck(board_copy)) {
+					throw new IllegalArgumentException();
 				}
 				//Moving to position
 				board[move_rank][fileToNum(move_file)] = board[this.rank][fileToNum(this.file)];
@@ -2105,9 +2486,96 @@ public class Chess {
 				this.rank = move_rank;
 				this.file = move_file;
 				this.has_moved = true;
-				check(this.file, this.rank);
+				if(this.check()) {
+					checkmate();
+				}
 				return;
 			}
+		}
+		
+		boolean check() {
+			
+			Piece temp;
+			
+			//Check above
+			if(this.rank != 8) {
+				
+				//Check up center
+				temp = board[this.rank + 1][fileToNum(this.file)];
+				if(temp != null) {
+					//if it's the opposite king
+					if(temp instanceof King) {
+						//checkmate((char) temp.file, temp.rank);
+						return true;
+					}
+					//Check up right
+					if(this.file != 'h') {
+						temp = board[this.rank + 1][fileToNum((char) (this.file + 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							//checkmate((char) temp.file, temp.rank);
+							return true;
+						}
+					}
+					//Check up left
+					if(this.file != 'a') {
+						temp = board[this.rank + 1][fileToNum((char) (this.file - 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							//checkmate((char) temp.file, temp.rank);
+							return true;
+						}
+					}
+				}
+				
+			}
+			//Check below
+			if(this.rank != 1) {
+				
+				//Check down center
+				temp = board[this.rank - 1][fileToNum(this.file)];
+				if(temp != null) {
+					//if it's the opposite king
+					if(temp instanceof King) {
+						//checkmate((char) temp.file, temp.rank);
+						return true;
+					}
+					//Check down right
+					if(this.file != 'h') {
+						temp = board[this.rank - 1][fileToNum((char) (this.file + 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							//checkmate((char) temp.file, temp.rank);
+							return true;
+						}
+					}
+					//Check down left
+					if(this.file != 'a') {
+						temp = board[this.rank - 1][fileToNum((char) (this.file - 1))];
+						//if it's the opposite king
+						if(temp instanceof King) {
+							//checkmate((char) temp.file, temp.rank);
+							return true;
+						}
+					}
+				}
+			}
+			//Check right
+			temp = board[this.rank][fileToNum((char) (this.file + 1))];
+			//if it's the opposite king
+			if(temp instanceof King) {
+				//checkmate((char) temp.file, temp.rank);
+				return true;
+			}
+			//Check left
+			temp = board[this.rank][fileToNum((char) (this.file - 1))];
+			//if it's the opposite king
+			if(temp instanceof King) {
+				//checkmate((char) temp.file, temp.rank);
+				return true;
+			}
+			
+			return false;
 		}
 	}
 	
