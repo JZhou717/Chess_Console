@@ -1,17 +1,17 @@
 package chess;
 
+import java.util.ArrayList;
 import java.util.Scanner;
 
 //NEED TO DO:
 
-//Currently do not account for revealed checks, will patch
-//Checkmate not implemented
-//Stalemate not implemented
-//Test check with all pieces
-//Fix Draw to just draw after request
-	//Execute move first, then draw, just remember that if the move results in checkmate, end the game, otherwise, print draw and the game is over
+//Checkmate not tested
+	//CHECKMATE MAY NOT WORK PROPERLY IF THE LAST MOVE WAS AN ENPASSANT
+//Stalemate not tested
+//Check not tested
+//Have not tested allValidMoves
 
-//Fix comments
+//Fix Javadoc comments
 
 
 
@@ -44,14 +44,16 @@ public class Chess {
 	static boolean white_moves = true;
 	static char white_enpassant = 0;
 	static char black_enpassant = 0;
+	/**
+	 * in is the scanner we use to get lines. It is global so that methods like stalemate and checkmate may close it before exiting
+	 */
+	static Scanner in = new Scanner(System.in);
 	
 	/**
 	 * The main method is the one that will be interacting with the user. It displays the chess board and reads input from the user.
 	 * @author Jake
 	 */
 	public static void main(String[] args) {
-		
-		Scanner in = new Scanner(System.in);
 		
 		String input;
 			boolean valid_input = false;
@@ -194,7 +196,7 @@ public class Chess {
 			
 			//User asked for draw and the move was valid and executed
 			if(asked_for_draw) {
-				System.out.println("\ndraw");
+				System.out.println("draw");
 				in.close();
 				System.exit(0);
 			}
@@ -332,10 +334,55 @@ public class Chess {
 	 */
 	public static Piece[][] copyBoard() {
 		Piece[][] board_copy = new Piece[9][8];
+		Piece original;
+		Piece copy;
 		
 		for(int r = 1; r < 9; r++) {
 			for(int f = 0; f < 8; f++) {
-				board_copy[r][f] = board[r][f];
+				if(board[r][f] != null) {
+					//Create a copy of the piece there
+					original = board[r][f];
+					//If the piece is a White_Pawn
+					if(original.name.equals("wp")) {
+						copy = new White_Pawn(original.file, original.rank);
+						copy.white_side = original.white_side;
+					}//If the piece is a Black_Pawn 
+					else if(original.name.equals("bp")) {
+						copy = new Black_Pawn(original.file, original.rank);
+						copy.white_side = original.white_side;
+					}//If the piece is a rook
+					else if(original.name.charAt(1) == 'R') {
+						copy = new Rook(original.file, original.rank);
+						copy.name = original.name;
+						copy.white_side = original.white_side;
+						((Rook) copy).has_moved = ((Rook) original).has_moved;
+					}//If the piece is a knight
+					else if(original.name.charAt(1) == 'N') {
+						copy = new Knight(original.file, original.rank);
+						copy.name = original.name;
+						copy.white_side = original.white_side;
+					}//If the piece is a bishop
+					else if(original.name.charAt(1) == 'B') {
+						copy = new Bishop(original.file, original.rank);
+						copy.name = original.name;
+						copy.white_side = original.white_side;
+					}//If the piece is a Queen
+					else if(original.name.charAt(1) == 'Q') {
+						copy = new Queen(original.file, original.rank);
+						copy.name = original.name;
+						copy.white_side = original.white_side;
+					}//The piece is a King
+					else {
+						copy = new King(original.file, original.rank);
+						copy.name = original.name;
+						copy.white_side = original.white_side;
+						((King) copy).has_moved = ((King) original).has_moved;
+					}
+					
+					board_copy[r][f] = copy;
+				}
+				
+				
 			}
 		}
 		
@@ -359,7 +406,7 @@ public class Chess {
 				//If there is a piece in this spot
 				if(board[r][f] != null) {
 					temp = board[r][f];
-					//If the piece is an opponent
+					//If the piece is not the current side playing
 					if(temp.white_side != white_moves) {
 						if(temp.check()) {
 							//if the move in the input board has current side's King in check
@@ -374,16 +421,104 @@ public class Chess {
 	}
 	
 	/**
-	 * This method is ran by each piece's check function, if there is a check on the King, check to see if there is a checkmate. If there is, end game, otherwise just print check
+	 * This method is ran by each piece's check function upon finding a check on the opponent side's King
+	 * It checks to see if there is a checkmate. If there is, end game, otherwise just print check
+	 * This method goes through the board and finds all pieces on the opposite side of who is currently playing and see if there is valid move for these pieces that puts their King out of check
 	 */
 	public static void checkmate() {
-		System.out.println("\nCheck");
+		
+		Piece temp;
+		ArrayList<String> tempMoves;
+		Piece[][] board_copy;
+		
+		//Going through all the ranks
+		for(int r = 1; r < 9; r++) {
+			//Going through all the files
+			for(int f = 0; f < 8; f++) {
+				//Checking to see if there is a piece in this spot
+				if(board[r][f] != null) {
+					temp = board[r][f];
+					//If the piece is on the opponent side
+					if(temp.white_side != white_moves) {
+						//Grab their valid moves
+						tempMoves = temp.allValidMoves();
+						//Go through all their valid moves
+						for(int i = 0; i < tempMoves.size(); i ++) {
+							char move_file = tempMoves.get(i).charAt(0);
+							int move_rank = Character.getNumericValue(tempMoves.get(i).charAt(1));
+							
+							board_copy = copyBoard();
+							//moves them there on the board copy
+							board_copy[move_rank][move_file] = board_copy[temp.rank][temp.file];
+							board_copy[temp.rank][temp.file] = null;
+							temp.rank = move_rank;
+							temp.file = move_file;
+							//Test to see if the opponent King is still in check after this move
+							//Have to change the current side since putsOwnKingInCheck only checks if the current side's King is in check
+							white_moves = !white_moves;
+							if(!putsOwnKingInCheck(board_copy)) {
+								white_moves = !white_moves;
+								//If there is no longer a check after this move
+								//This is only a check, not a checkmate
+								System.out.println("\nCheck");
+								return;
+							}
+							white_moves = !white_moves;
+							
+						}
+					}
+				}
+			}
+		}
+		
+		//Went through all the possible pieces and there is no instance where a valid move brings the opponent King out of check
+		System.out.println("\nCheckmate");
+		if(white_moves) {
+			System.out.print("\nBlack wins");
+		}
+		else {
+			System.out.print("\nWhite wins");
+		}
+		in.close();
+		System.exit(0);
+		
 	}
 	
 	/**
 	 * Before every move is played, this method checks to see if the current side is in stalemate
+	 * It goes through the board, checks to see if the current position holds a piece on this side, and gets all its valid pieces
+	 * If the check goes through the entire board without finding a valid move from this side's pieces, it ends the game in stalemate
 	 */
 	public static void stalemate() {
+		
+		Piece temp;
+		ArrayList<String> tempMoves;
+		
+		//Going through all the ranks
+		for(int r = 1; r < 9; r++) {
+			//Going through all the files
+			for(int f = 0; f < 8; f++) {
+				//If there is a piece in this spot
+				if(board[r][f] != null) {
+					temp = board[r][f];
+					//If the piece is on the current side
+					if(temp.white_side == white_moves) {
+						//Get all its valid moves
+						tempMoves = temp.allValidMoves();
+						//If there is a valid move
+						if(tempMoves.size() != 0) {
+							//There is no stalemate
+							return;
+						}
+					}
+				}
+			}
+		}
+		//Went through the entire board and no pieces on this side has a valid move
+		System.out.println("\nStalemate");
+		System.out.println("\ndraw");
+		in.close();
+		System.exit(0);
 		
 	}
 	
@@ -401,6 +536,7 @@ public class Chess {
 		boolean white_side;
 		abstract void move(String move_to) throws IllegalArgumentException;
 		abstract boolean check();
+		abstract ArrayList<String> allValidMoves();
 	}
 	
 	/**
@@ -416,6 +552,7 @@ public class Chess {
 			this.name = "wp";
 			this.file = file;
 			this.rank = rank;
+			this.white_side = true;
 		}
 		
 		void move(String move_to) throws IllegalArgumentException{
@@ -706,6 +843,116 @@ public class Chess {
 				throw new IllegalArgumentException();
 			}
 		}
+		
+		ArrayList<String> allValidMoves() {
+			
+			ArrayList<String> result = new ArrayList<String>();
+			String move;
+			Piece[][] board_copy;
+			boolean side_playing = white_moves;
+			
+			//Checking up 1
+			if(board[this.rank + 1][fileToNum(this.file)] == null) {
+				//Testing if this move puts own King in check
+				board_copy = copyBoard();
+				board_copy[this.rank + 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+				board_copy[this.rank][fileToNum(this.file)] = null;
+				board_copy[this.rank + 1][fileToNum(this.file)].rank = board_copy[this.rank + 1][fileToNum(this.file)].rank + 1;
+				white_moves = board_copy[this.rank + 1][fileToNum(this.file)].white_side;
+				if(!putsOwnKingInCheck(board_copy)) {
+					move = String.valueOf(this.file).concat((this.rank + 1) + "");
+					result.add(move);
+				}
+				white_moves = side_playing;
+				
+				//Checking up 2
+				if(this.rank == 2 && board[this.rank + 2][fileToNum(this.file)] == null) {
+					//Testing if this move puts own King in check
+					board_copy = copyBoard();
+					board_copy[this.rank + 2][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank + 2][fileToNum(this.file)].rank = board_copy[this.rank + 2][fileToNum(this.file)].rank + 2;
+					white_moves = board_copy[this.rank + 2][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat((this.rank + 2) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+			}
+			//Checking up-left
+			if(this.file != 'a') {
+				//If you can enpassant
+				if(this.rank == 5 && this.file - 1 == black_enpassant) {
+					//Testing if this move puts own King in check
+					board_copy = copyBoard();
+					board_copy[6][fileToNum(black_enpassant)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[6][fileToNum(black_enpassant)].rank = 6;
+					board_copy[6][fileToNum(black_enpassant)].file = black_enpassant;
+					white_moves = board_copy[6][fileToNum(black_enpassant)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf((char) (this.file - 1)).concat((this.rank + 1) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}//Else if you can capture
+				else if(board[this.rank + 1][fileToNum((char) (this.file - 1))] != null) {
+					if(board[this.rank + 1][fileToNum((char) (this.file - 1))].white_side != this.white_side) {
+						//Testing if this move puts own King in check
+						board_copy = copyBoard();
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank + 1;
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file - 1);
+						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file - 1)).concat((this.rank + 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+			}
+			//Checking up-right
+			if(this.file != 'h') {
+				//If you can enpassant
+				if(this.rank == 5 && this.file + 1 == black_enpassant) {
+					//Testing if this move puts own King in check
+					board_copy = copyBoard();
+					board_copy[6][fileToNum(black_enpassant)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[6][fileToNum(black_enpassant)].rank = 6;
+					board_copy[6][fileToNum(black_enpassant)].file = black_enpassant;
+					white_moves = board_copy[6][fileToNum(black_enpassant)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf((char) (this.file + 1)).concat((this.rank + 1) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}//Else if you can capture
+				else if(board[this.rank + 1][fileToNum((char) (this.file + 1))] != null) {
+					if(board[this.rank + 1][fileToNum((char) (this.file + 1))].white_side != this.white_side) {
+						//Testing if this move puts own King in check
+						board_copy = copyBoard();
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank + 1;
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file + 1);
+						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file + 1)).concat((this.rank + 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+			}
+			
+			
+			return result;
+		}
 	}
 	
 	public static class Black_Pawn extends Piece {
@@ -713,6 +960,7 @@ public class Chess {
 			this.name = "bp";
 			this.file = file;
 			this.rank = rank;
+			this.white_side = false;
 		}
 		void move(String move_to)  throws IllegalArgumentException{
 			//If you're trying to move a black piece on a white move
@@ -1003,6 +1251,115 @@ public class Chess {
 				throw new IllegalArgumentException();
 			}
 		}
+		
+		ArrayList<String> allValidMoves() {
+			
+			ArrayList<String> result = new ArrayList<String>();
+			String move;
+			Piece[][] board_copy;
+			boolean side_playing = white_moves;
+			
+			//Checking down 1
+			if(board[this.rank - 1][fileToNum(this.file)] == null) {
+				//Testing if this move puts own King in check
+				board_copy = copyBoard();
+				board_copy[this.rank - 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+				board_copy[this.rank][fileToNum(this.file)] = null;
+				board_copy[this.rank - 1][fileToNum(this.file)].rank = board_copy[this.rank - 1][fileToNum(this.file)].rank - 1;
+				white_moves = board_copy[this.rank - 1][fileToNum(this.file)].white_side;
+				if(!putsOwnKingInCheck(board_copy)) {
+					move = String.valueOf(this.file).concat((this.rank - 1) + "");
+					result.add(move);
+				}
+				white_moves = side_playing;
+				
+				//Checking down 2
+				if(this.rank == 7 && board[this.rank - 2][fileToNum(this.file)] == null) {
+					//Testing if this move puts own King in check
+					board_copy = copyBoard();
+					board_copy[this.rank - 2][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank - 2][fileToNum(this.file)].rank = board_copy[this.rank - 2][fileToNum(this.file)].rank - 2;
+					white_moves = board_copy[this.rank - 2][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat((this.rank - 2) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+			}
+			//Checking down-left
+			if(this.file != 'a') {
+				//If you can enpassant
+				if(this.rank == 4 && this.file - 1 == white_enpassant) {
+					//Testing if this move puts own King in check
+					board_copy = copyBoard();
+					board_copy[4][fileToNum(white_enpassant)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[4][fileToNum(white_enpassant)].rank = 4;
+					board_copy[4][fileToNum(white_enpassant)].file = white_enpassant;
+					white_moves = board_copy[4][fileToNum(white_enpassant)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf((char) (this.file - 1)).concat((this.rank - 1) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}//Else if you can capture
+				else if(board[this.rank - 1][fileToNum((char) (this.file - 1))] != null) {
+					if(board[this.rank - 1][fileToNum((char) (this.file - 1))].white_side != this.white_side) {
+						//Testing if this move puts own King in check
+						board_copy = copyBoard();
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank - 1;
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file - 1);
+						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file - 1)).concat((this.rank - 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+			}
+			//Checking down-right
+			if(this.file != 'h') {
+				//If you can enpassant
+				if(this.rank == 4 && this.file + 1 == white_enpassant) {
+					//Testing if this move puts own King in check
+					board_copy = copyBoard();
+					board_copy[4][fileToNum(white_enpassant)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[4][fileToNum(white_enpassant)].rank = 4;
+					board_copy[4][fileToNum(white_enpassant)].file = white_enpassant;
+					white_moves = board_copy[6][fileToNum(white_enpassant)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf((char) (this.file + 1)).concat((this.rank - 1) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}//Else if you can capture
+				else if(board[this.rank - 1][fileToNum((char) (this.file + 1))] != null) {
+					if(board[this.rank - 1][fileToNum((char) (this.file + 1))].white_side != this.white_side) {
+						//Testing if this move puts own King in check
+						board_copy = copyBoard();
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank - 1;
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file + 1);
+						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file + 1)).concat((this.rank - 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+			}
+			
+			
+			return result;
+		}
 	}
 	
 	public static class Rook extends Piece {
@@ -1248,6 +1605,161 @@ public class Chess {
 			
 			return false;
 		}
+		
+		ArrayList<String> allValidMoves() {
+			
+			ArrayList<String> result = new ArrayList<String>();
+			String move;
+			Piece[][] board_copy;
+			boolean side_playing = white_moves;
+			
+			//Checking all possible moves up
+			for(int r = this.rank + 1; r < 9; r++) {
+				//If there is no piece in this position
+				if(board[r][fileToNum(this.file)] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][fileToNum(this.file)].rank = r;
+					white_moves = board_copy[r][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[r][fileToNum(this.file)].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][fileToNum(this.file)].rank = r;
+						white_moves = board_copy[r][fileToNum(this.file)].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(this.file).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			//Checking all possible moves down
+			for(int r = this.rank - 1; r > 0; r--) {
+				//If there is no piece in this position
+				if(board[r][fileToNum(this.file)] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][fileToNum(this.file)].rank = r;
+					white_moves = board_copy[r][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[r][fileToNum(this.file)].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][fileToNum(this.file)].rank = r;
+						white_moves = board_copy[r][fileToNum(this.file)].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(this.file).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			//Checking all possible moves right
+			for(int f = fileToNum(this.file) + 1; f < 8; f++) {
+				//If there is no piece in this position
+				if(board[this.rank][f] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank][f].file = numToFile(f);
+					white_moves = board_copy[this.rank][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(numToFile(f)).concat(this.rank + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[this.rank][f].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank][f].file = numToFile(f);
+						white_moves = board_copy[this.rank][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(numToFile(f)).concat(this.rank + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			//Checking all possible moves left
+			for(int f = fileToNum(this.file) - 1; f >= 0; f--) {
+				//If there is no piece in this position
+				if(board[this.rank][f] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank][f].file = numToFile(f);
+					white_moves = board_copy[this.rank][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(numToFile(f)).concat(this.rank + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[this.rank][f].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank][f].file = numToFile(f);
+						white_moves = board_copy[this.rank][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(numToFile(f)).concat(this.rank + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			
+			return result;
+		}
 	}
 	
 	public static class Knight extends Piece {
@@ -1449,6 +1961,279 @@ public class Chess {
 			
 			return false;
 		}
+		
+		ArrayList<String> allValidMoves() {
+			
+			ArrayList<String> result = new ArrayList<String>();
+			String move;
+			Piece[][] board_copy;
+			boolean side_playing = white_moves;
+			
+			//Check first layer above
+			if(this.rank <= 7) {
+				//Check up-left one
+				if(this.file >= 'c') {
+					if(board[this.rank + 1][fileToNum((char) (this.file - 2))] == null) {
+						board_copy = copyBoard();
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 2))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].rank + 1;
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].file - 2);
+						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file - 2)).concat(this.rank + 1 + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank + 1][fileToNum((char) (this.file - 2))].white_side != this.white_side) {
+							board_copy = copyBoard();
+							board_copy[this.rank + 1][fileToNum((char) (this.file - 2))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].rank + 1;
+							board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].file - 2);
+							white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file - 2))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file - 2)).concat(this.rank + 1 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+				//Check up-right one
+				if(this.file <= 'f') {
+					if(board[this.rank + 1][fileToNum((char) (this.file + 2))] == null) {
+						board_copy = copyBoard();
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 2))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].rank + 1;
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].file + 2);
+						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file + 2)).concat(this.rank + 1 + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank + 1][fileToNum((char) (this.file + 2))].white_side != this.white_side) {
+							board_copy = copyBoard();
+							board_copy[this.rank + 1][fileToNum((char) (this.file + 2))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].rank + 1;
+							board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].file + 2);
+							white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file + 2))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file + 2)).concat(this.rank + 1 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+				//Check 2nd layer above
+				if(this.rank <= 6) {
+					//Check up-left two
+					if(this.file >= 'b') {
+						if(board[this.rank + 2][fileToNum((char) (this.file - 1))] == null) {
+							board_copy = copyBoard();
+							board_copy[this.rank + 2][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].rank + 2;
+							board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].file - 1);
+							white_moves = board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file - 1)).concat(this.rank + 2 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+						else {
+							if(board[this.rank + 2][fileToNum((char) (this.file - 1))].white_side != this.white_side) {
+								board_copy = copyBoard();
+								board_copy[this.rank + 2][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+								board_copy[this.rank][fileToNum(this.file)] = null;
+								board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].rank + 2;
+								board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].file - 1);
+								white_moves = board_copy[this.rank + 2][fileToNum((char) (this.file - 1))].white_side;
+								if(!putsOwnKingInCheck(board_copy)) {
+									move = String.valueOf((char) (this.file - 1)).concat(this.rank + 2 + "");
+									result.add(move);
+								}
+								white_moves = side_playing;
+							}
+						}
+					}
+					//Check up-right two
+					if(this.file <= 'g') {
+						if(board[this.rank + 2][fileToNum((char) (this.file + 1))] == null) {
+							board_copy = copyBoard();
+							board_copy[this.rank + 2][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].rank + 2;
+							board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].file + 1);
+							white_moves = board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file + 1)).concat(this.rank + 2 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+						else {
+							if(board[this.rank + 2][fileToNum((char) (this.file + 1))].white_side != this.white_side) {
+								board_copy = copyBoard();
+								board_copy[this.rank + 2][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+								board_copy[this.rank][fileToNum(this.file)] = null;
+								board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].rank + 2;
+								board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].file + 1);
+								white_moves = board_copy[this.rank + 2][fileToNum((char) (this.file + 1))].white_side;
+								if(!putsOwnKingInCheck(board_copy)) {
+									move = String.valueOf((char) (this.file + 1)).concat(this.rank + 2 + "");
+									result.add(move);
+								}
+								white_moves = side_playing;
+							}
+						}
+					}
+				}
+			}
+			//Check 1st layer below 
+			if(this.rank >= 2) {
+				
+				//Check down-left one
+				if(this.file >= 'c') {
+					if(board[this.rank - 1][fileToNum((char) (this.file - 2))] == null) {
+						board_copy = copyBoard();
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 2))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].rank - 1;
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].file - 2);
+						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file - 2)).concat(this.rank - 1 + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank - 1][fileToNum((char) (this.file - 2))].white_side != this.white_side) {
+							board_copy = copyBoard();
+							board_copy[this.rank - 1][fileToNum((char) (this.file - 2))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].rank - 1;
+							board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].file - 2);
+							white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file - 2))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file - 2)).concat(this.rank - 1 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+				//Check down-right one
+				if(this.file <= 'f') {
+					if(board[this.rank - 1][fileToNum((char) (this.file + 2))] == null) {
+						board_copy = copyBoard();
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 2))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].rank - 1;
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].file + 2);
+						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file + 2)).concat(this.rank - 1 + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank - 1][fileToNum((char) (this.file + 2))].white_side != this.white_side) {
+							board_copy = copyBoard();
+							board_copy[this.rank - 1][fileToNum((char) (this.file + 2))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].rank - 1;
+							board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].file + 2);
+							white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file + 2))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file + 2)).concat(this.rank - 1 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+				//Check 2nd layer below
+				if(this.rank <= 6) {
+					//Check down-left two
+					if(this.file >= 'b') {
+						if(board[this.rank - 2][fileToNum((char) (this.file - 1))] == null) {
+							board_copy = copyBoard();
+							board_copy[this.rank - 2][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].rank - 2;
+							board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].file - 1);
+							white_moves = board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file - 1)).concat(this.rank - 2 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+						else {
+							if(board[this.rank - 2][fileToNum((char) (this.file - 1))].white_side != this.white_side) {
+								board_copy = copyBoard();
+								board_copy[this.rank - 2][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+								board_copy[this.rank][fileToNum(this.file)] = null;
+								board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].rank - 2;
+								board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].file - 1);
+								white_moves = board_copy[this.rank - 2][fileToNum((char) (this.file - 1))].white_side;
+								if(!putsOwnKingInCheck(board_copy)) {
+									move = String.valueOf((char) (this.file - 1)).concat(this.rank - 2 + "");
+									result.add(move);
+								}
+								white_moves = side_playing;
+							}
+						}
+					}
+					//Check down-right two
+					if(this.file <= 'g') {
+						if(board[this.rank - 2][fileToNum((char) (this.file + 1))] == null) {
+							board_copy = copyBoard();
+							board_copy[this.rank - 2][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].rank - 2;
+							board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].file + 1);
+							white_moves = board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file + 1)).concat(this.rank - 2 + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+						else {
+							if(board[this.rank - 2][fileToNum((char) (this.file + 1))].white_side != this.white_side) {
+								board_copy = copyBoard();
+								board_copy[this.rank - 2][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+								board_copy[this.rank][fileToNum(this.file)] = null;
+								board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].rank - 2;
+								board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].file + 1);
+								white_moves = board_copy[this.rank - 2][fileToNum((char) (this.file + 1))].white_side;
+								if(!putsOwnKingInCheck(board_copy)) {
+									move = String.valueOf((char) (this.file + 1)).concat(this.rank - 2 + "");
+									result.add(move);
+								}
+								white_moves = side_playing;
+							}
+						}
+					}
+				}
+			}
+			
+			return result;
+		}
+		
 	}
 	
 	public static class Bishop extends Piece {
@@ -1718,6 +2503,171 @@ public class Chess {
 			}
 			
 			return false;
+		}
+		
+		ArrayList<String> allValidMoves() {
+			
+			ArrayList<String> result = new ArrayList<String>();
+			String move;
+			Piece[][] board_copy;
+			boolean side_playing = white_moves;
+			
+			//Check up-right
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file + (r - this.rank)));
+				if(f > 7) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+				
+			}
+			//Check up-left
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file - (r - this.rank)));
+				if(f < 0) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+			}
+			//Check down-right
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file + (this.rank - r)));
+				if(f > 7) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+			}
+			//Check down-left
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file - (this.rank - r)));
+				if(f < 0) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+			}
+			
+			return result;
+			
 		}
 	}
 	
@@ -2183,6 +3133,316 @@ public class Chess {
 			return false;
 			
 		}
+		
+ArrayList<String> allValidMoves() {
+			
+			ArrayList<String> result = new ArrayList<String>();
+			String move;
+			Piece[][] board_copy;
+			boolean side_playing = white_moves;
+			
+			//Checking all possible moves up
+			for(int r = this.rank + 1; r < 9; r++) {
+				//If there is no piece in this position
+				if(board[r][fileToNum(this.file)] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][fileToNum(this.file)].rank = r;
+					white_moves = board_copy[r][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[r][fileToNum(this.file)].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][fileToNum(this.file)].rank = r;
+						white_moves = board_copy[r][fileToNum(this.file)].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(this.file).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			//Checking all possible moves down
+			for(int r = this.rank - 1; r > 0; r--) {
+				//If there is no piece in this position
+				if(board[r][fileToNum(this.file)] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][fileToNum(this.file)].rank = r;
+					white_moves = board_copy[r][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[r][fileToNum(this.file)].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[r][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][fileToNum(this.file)].rank = r;
+						white_moves = board_copy[r][fileToNum(this.file)].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(this.file).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			//Checking all possible moves right
+			for(int f = fileToNum(this.file) + 1; f < 8; f++) {
+				//If there is no piece in this position
+				if(board[this.rank][f] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank][f].file = numToFile(f);
+					white_moves = board_copy[this.rank][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(numToFile(f)).concat(this.rank + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[this.rank][f].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank][f].file = numToFile(f);
+						white_moves = board_copy[this.rank][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(numToFile(f)).concat(this.rank + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			//Checking all possible moves left
+			for(int f = fileToNum(this.file) - 1; f >= 0; f--) {
+				//If there is no piece in this position
+				if(board[this.rank][f] == null) {
+					//Check to see if this move puts the king in check
+					board_copy = copyBoard();
+					board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank][f].file = numToFile(f);
+					white_moves = board_copy[this.rank][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(numToFile(f)).concat(this.rank + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+					
+				}
+				else {
+					//Can capture this piece
+					if(board[this.rank][f].white_side != this.white_side) {
+						//Check to see if this move puts the king in check
+						board_copy = copyBoard();
+						board_copy[this.rank][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank][f].file = numToFile(f);
+						white_moves = board_copy[this.rank][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(numToFile(f)).concat(this.rank + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					//Can only do it once, not to the pieces behind it too
+					break;
+				}
+			}
+			
+			//Check up-right
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file + (r - this.rank)));
+				if(f > 7) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+				
+			}
+			//Check up-left
+			for(int r = this.rank + 1; r < 9; r++) {
+				int f = fileToNum((char) (this.file - (r - this.rank)));
+				if(f < 0) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+			}
+			//Check down-right
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file + (this.rank - r)));
+				if(f > 7) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+			}
+			//Check down-left
+			for(int r = this.rank - 1; r > 0; r--) {
+				int f = fileToNum((char) (this.file - (this.rank - r)));
+				if(f < 0) {
+					break;
+				}
+				if(board[r][f] == null) {
+					//Check to see if this move puts our own king in check
+					board_copy = copyBoard();
+					board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[r][f].rank = r;
+					board_copy[r][f].file = numToFile(f);
+					white_moves = board_copy[r][f].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(f).concat(r + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[r][f].white_side != this.white_side) {
+						//Check to see if this move puts our own king in check
+						board_copy = copyBoard();
+						board_copy[r][f] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[r][f].rank = r;
+						board_copy[r][f].file = numToFile(f);
+						white_moves = board_copy[r][f].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(f).concat(r + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					break;
+				}
+			}
+			
+			return result;
+		
+		}
 	}
 	
 	public static class King extends Piece {
@@ -2576,6 +3836,275 @@ public class Chess {
 			}
 			
 			return false;
+		}
+		
+		ArrayList<String> allValidMoves() {
+			
+			ArrayList<String> result = new ArrayList<String>();
+			String move;
+			Piece[][] board_copy;
+			boolean side_playing = white_moves;
+			
+			//Checking Above
+			if(this.rank != 8) {
+				//Checking up-center
+				if(board[this.rank + 1][numToFile(this.file)] == null) {
+					//Making sure it doesn't put itself in check
+					board_copy = copyBoard();
+					board_copy[this.rank + 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank + 1][fileToNum(this.file)].rank = board_copy[this.rank + 1][fileToNum(this.file)].rank + 1;
+					white_moves = board_copy[this.rank + 1][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat((this.rank + 1) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[this.rank + 1][numToFile(this.file)].white_side != this.white_side) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank + 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank + 1][fileToNum(this.file)].rank = board_copy[this.rank + 1][fileToNum(this.file)].rank + 1;
+						white_moves = board_copy[this.rank + 1][fileToNum(this.file)].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(this.file).concat((this.rank + 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+				//Checking up-right
+				if(this.file != 'h') {
+					if(board[this.rank + 1][numToFile((char) (this.file + 1))] == null) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank + 1;
+						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file + 1);
+						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char ) (this.file + 1)).concat((this.rank + 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank + 1][numToFile((char) (this.file + 1))].white_side != this.white_side) {
+							//Making sure it doesn't put itself in check
+							board_copy = copyBoard();
+							board_copy[this.rank + 1][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank + 1;
+							board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file + 1);
+							white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file + 1)).concat((this.rank + 1) + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+				//Checking up-left
+				if(this.file != 'a') {
+					if(board[this.rank + 1][numToFile((char) (this.file - 1))] == null) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank + 1;
+						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file - 1);
+						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char ) (this.file - 1)).concat((this.rank + 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank + 1][numToFile((char) (this.file - 1))].white_side != this.white_side) {
+							//Making sure it doesn't put itself in check
+							board_copy = copyBoard();
+							board_copy[this.rank + 1][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank + 1;
+							board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file - 1);
+							white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file - 1)).concat((this.rank + 1) + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+			}
+			//Checking Below
+			if(this.rank != 0) {
+				//Checking down-center
+				if(board[this.rank - 1][numToFile(this.file)] == null) {
+					//Making sure it doesn't put itself in check
+					board_copy = copyBoard();
+					board_copy[this.rank - 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank - 1][fileToNum(this.file)].rank = board_copy[this.rank - 1][fileToNum(this.file)].rank - 1;
+					white_moves = board_copy[this.rank - 1][fileToNum(this.file)].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf(this.file).concat((this.rank - 1) + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[this.rank - 1][numToFile(this.file)].white_side != this.white_side) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank - 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank - 1][fileToNum(this.file)].rank = board_copy[this.rank - 1][fileToNum(this.file)].rank - 1;
+						white_moves = board_copy[this.rank - 1][fileToNum(this.file)].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf(this.file).concat((this.rank - 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+				//Checking down-right
+				if(this.file != 'h') {
+					if(board[this.rank - 1][numToFile((char) (this.file + 1))] == null) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank - 1;
+						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file + 1);
+						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char ) (this.file + 1)).concat((this.rank - 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank - 1][numToFile((char) (this.file + 1))].white_side != this.white_side) {
+							//Making sure it doesn't put itself in check
+							board_copy = copyBoard();
+							board_copy[this.rank - 1][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank - 1;
+							board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file + 1);
+							white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file + 1)).concat((this.rank - 1) + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+				//Checking down-left
+				if(this.file != 'a') {
+					if(board[this.rank - 1][numToFile((char) (this.file - 1))] == null) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank - 1;
+						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file - 1);
+						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char ) (this.file - 1)).concat((this.rank - 1) + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+					else {
+						if(board[this.rank - 1][numToFile((char) (this.file - 1))].white_side != this.white_side) {
+							//Making sure it doesn't put itself in check
+							board_copy = copyBoard();
+							board_copy[this.rank - 1][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+							board_copy[this.rank][fileToNum(this.file)] = null;
+							board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank - 1;
+							board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file - 1);
+							white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].white_side;
+							if(!putsOwnKingInCheck(board_copy)) {
+								move = String.valueOf((char) (this.file - 1)).concat((this.rank - 1) + "");
+								result.add(move);
+							}
+							white_moves = side_playing;
+						}
+					}
+				}
+			}
+			//Checking Right
+			if(this.file != 'h') {
+				if(board[this.rank][numToFile((char) (this.file + 1))] == null) {
+					//Making sure it doesn't put itself in check
+					board_copy = copyBoard();
+					board_copy[this.rank][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file + 1))].file + 1);
+					white_moves = board_copy[this.rank][fileToNum((char) (this.file + 1))].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf((char) (this.file + 1)).concat(this.rank + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[this.rank][fileToNum((char) (this.file + 1))].white_side != this.white_side) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file + 1))].file + 1);
+						white_moves = board_copy[this.rank][fileToNum((char) (this.file + 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file + 1)).concat(this.rank + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+			}
+			//Checking Left
+			if(this.file != 'a') {
+				if(board[this.rank][numToFile((char) (this.file - 1))] == null) {
+					//Making sure it doesn't put itself in check
+					board_copy = copyBoard();
+					board_copy[this.rank][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+					board_copy[this.rank][fileToNum(this.file)] = null;
+					board_copy[this.rank][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file - 1))].file - 1);
+					white_moves = board_copy[this.rank][fileToNum((char) (this.file - 1))].white_side;
+					if(!putsOwnKingInCheck(board_copy)) {
+						move = String.valueOf((char) (this.file - 1)).concat(this.rank + "");
+						result.add(move);
+					}
+					white_moves = side_playing;
+				}
+				else {
+					if(board[this.rank][fileToNum((char) (this.file - 1))].white_side != this.white_side) {
+						//Making sure it doesn't put itself in check
+						board_copy = copyBoard();
+						board_copy[this.rank][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
+						board_copy[this.rank][fileToNum(this.file)] = null;
+						board_copy[this.rank][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file - 1))].file - 1);
+						white_moves = board_copy[this.rank][fileToNum((char) (this.file - 1))].white_side;
+						if(!putsOwnKingInCheck(board_copy)) {
+							move = String.valueOf((char) (this.file - 1)).concat(this.rank + "");
+							result.add(move);
+						}
+						white_moves = side_playing;
+					}
+				}
+			}
+			
+			return result;
 		}
 	}
 	
