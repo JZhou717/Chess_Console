@@ -81,7 +81,7 @@ public class Chess {
 		
 		initialize();
 		while(!done) {
-			display();
+			display(board);
 			
 			//Checking for stalemate
 			stalemate();
@@ -176,7 +176,7 @@ public class Chess {
 						else {
 							((White_Pawn) piece).promote("q");
 						}
-						piece.check();
+						piece.check(board);
 					}
 					if(piece instanceof Black_Pawn && rank == 1) {
 						if(third.equals("r")) {
@@ -191,12 +191,11 @@ public class Chess {
 						else {
 							((Black_Pawn) piece).promote("q");
 						}
-						piece.check();
+						piece.check(board);
 					}
 				} catch (IllegalArgumentException e) {
-					e.printStackTrace();
-					System.out.println("\nIllegal move, try again");
 					//e.printStackTrace();
+					System.out.println("\nIllegal move, try again");
 					asked_for_draw = false;
 					continue;
 				}
@@ -273,7 +272,7 @@ public class Chess {
 	 * This method will also print out the file numbers and the rank letters
 	 * @author Jake
 	 */
-	public static void display() {
+	public static void display(Piece[][] board) {
 		Piece piece;
 		for(int i = 8; i > 0; i--) {
 			for(int j = 0; j < 8; j++) {
@@ -408,7 +407,10 @@ public class Chess {
 	 * @param takes in a board after a move has been made
 	 * @return returns true if the input board has the current side's King in chess, meaning the last move was illegal, otherwise returns false
 	 */
-	public static boolean putsOwnKingInCheck(Piece[][] board) {
+	public static boolean putsOwnKingInCheck(Piece[][] board_copy) {
+		
+		//System.out.println("\nTESTING: In putsOwnKingInCheck");
+		//display(board_copy);
 		
 		Piece temp;
 		
@@ -417,11 +419,17 @@ public class Chess {
 			//Going through all the files
 			for(int f = 0; f < 8; f++) {
 				//If there is a piece in this spot
-				if(board[r][f] != null) {
-					temp = board[r][f];
+				if(board_copy[r][f] != null) {
+					temp = board_copy[r][f];
+					
+					//System.out.println("\nTESITNG:\nName: " + temp.name + "\nFile: " + String.valueOf(temp.file) + "\nRank: " + temp.rank); 
+					
 					//If the piece is not the current side playing
 					if(temp.white_side != white_moves) {
-						if(temp.check()) {
+						
+						//System.out.println("\nTESITNG: temp's white_side = : " + temp.white_side); 
+						
+						if(temp.check(board_copy)) {
 							//if the move in the input board has current side's King in check
 							return true;
 						}
@@ -441,10 +449,10 @@ public class Chess {
 	public static void checkmate() {
 		
 		if(white_moves) {
-			System.out.println("TESTING: WHITE'S CALLS CHECK");
+			//System.out.println("TESTING: WHITE CALLS CHECK");
 		}
 		else {
-			System.out.println("TESTING: BLACK'S CALLS CHECK");
+			//System.out.println("TESTING: BLACK'S CALLS CHECK");
 		}
 		
 		Piece temp;
@@ -460,26 +468,26 @@ public class Chess {
 					temp = board[r][f];
 					//If the piece is on the opponent side
 					if(temp.white_side != white_moves) {
-						System.out.println("\nTESITNG:\nName: " + temp.name + "\nFile: " + String.valueOf(temp.file) + "\nRank: " + temp.rank); 
+						System.out.println("\nTESITNG - in checkmate:\nName: " + temp.name + "\nFile: " + String.valueOf(temp.file) + "\nRank: " + temp.rank); 
 						
 						//Grab their valid moves
 						tempMoves = temp.allValidMoves();
-						System.out.println("TESTING: tempMoves.size()" + tempMoves.size());
+						System.out.println("TESTING - in checkmate: tempMoves.size(): " + tempMoves.size());
 						
 						//Go through all their valid moves
 						for(int i = 0; i < tempMoves.size(); i++) {
 							
-							System.out.println("TESTING: tempMoves.get(i): " + tempMoves.get(i));
+							System.out.println("TESTING - in checkmate: i: " + i + " tempMoves.get(i): " + tempMoves.get(i));
 							
-							char move_file = tempMoves.get(i).charAt(0);
+							int move_file = fileToNum(tempMoves.get(i).charAt(0));
 							int move_rank = Character.getNumericValue(tempMoves.get(i).charAt(1));
 							
 							board_copy = copyBoard();
 							//moves them there on the board copy
-							board_copy[move_rank][move_file] = board_copy[temp.rank][temp.file];
-							board_copy[temp.rank][temp.file] = null;
+							board_copy[move_rank][move_file] = board_copy[temp.rank][fileToNum(temp.file)];
+							board_copy[temp.rank][fileToNum(temp.file)] = null;
 							board_copy[move_rank][move_file].rank = move_rank;
-							board_copy[move_rank][move_file].file = move_file;
+							board_copy[move_rank][move_file].file = numToFile(move_file);
 							//Test to see if the opponent King is still in check after this move
 							//Have to change the current side since putsOwnKingInCheck only checks if the current side's King is in check
 							white_moves = !white_moves;
@@ -501,7 +509,7 @@ public class Chess {
 		}
 		
 		//Went through all the possible pieces and there is no instance where a valid move brings the opponent King out of check
-		display();
+		display(board);
 		System.out.println("\nCheckmate");
 		if(white_moves) {
 			System.out.print("\nBlack wins");
@@ -521,6 +529,8 @@ public class Chess {
 	 */
 	public static void stalemate() {
 		
+		//System.out.println("TESTING: IN STALEMATE");
+		
 		Piece temp;
 		ArrayList<String> tempMoves;
 		
@@ -533,8 +543,14 @@ public class Chess {
 					temp = board[r][f];
 					//If the piece is on the current side
 					if(temp.white_side == white_moves) {
+						
+						//System.out.println("\nTESITNG: Stalemate\nName: " + temp.name + "\nFile: " + String.valueOf(temp.file) + "\nRank: " + temp.rank); 
+						
 						//Get all its valid moves
 						tempMoves = temp.allValidMoves();
+						
+						//System.out.println("TESTING: Stalemate - tempMoves.size(): " + tempMoves.size());
+						
 						//If there is a valid move
 						if(tempMoves.size() != 0) {
 							//There is no stalemate
@@ -545,7 +561,7 @@ public class Chess {
 			}
 		}
 		//Went through the entire board and no pieces on this side has a valid move
-		display();
+		display(board);
 		System.out.println("\nStalemate");
 		System.out.println("\ndraw");
 		in.close();
@@ -566,7 +582,7 @@ public class Chess {
 		int rank;
 		boolean white_side;
 		abstract void move(String move_to) throws IllegalArgumentException;
-		abstract boolean check();
+		abstract boolean check(Piece[][] board);
 		abstract ArrayList<String> allValidMoves();
 	}
 	
@@ -635,7 +651,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -664,7 +680,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -692,7 +708,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -719,7 +735,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -750,7 +766,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -780,7 +796,7 @@ public class Chess {
 					this.rank = move_rank;
 					this.file = move_file;
 					white_enpassant = this.file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					
@@ -794,7 +810,7 @@ public class Chess {
 
 		}
 		
-		boolean check() {
+		boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -855,28 +871,28 @@ public class Chess {
 				newPiece.name = "w" + newPiece.name;
 				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} 
 			else if(promote_to.equals("n")) {
 				Piece newPiece = new Knight(this.file, this.rank);
 				newPiece.name = "w" + newPiece.name;
 				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} 
 			else if(promote_to.equals("b")) {
 				Piece newPiece = new Bishop(this.file, this.rank);
 				newPiece.name = "w" + newPiece.name;
 				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} 
 			else if(promote_to.equals("q")) {
 				Piece newPiece = new Queen(this.file, this.rank);
 				newPiece.name = "w" + newPiece.name;
 				newPiece.white_side = true;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} else {
 				throw new IllegalArgumentException();
 			}
@@ -887,7 +903,7 @@ public class Chess {
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
 			Piece[][] board_copy;
-			boolean side_playing = white_moves;
+			final boolean side_playing = white_moves;
 			
 			//Checking up 1
 			if(board[this.rank + 1][fileToNum(this.file)] == null) {
@@ -1046,7 +1062,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -1074,7 +1090,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1102,7 +1118,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -1129,7 +1145,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1158,7 +1174,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1185,7 +1201,7 @@ public class Chess {
 					this.rank = move_rank;
 					this.file = move_file;
 					black_enpassant = this.file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1197,7 +1213,7 @@ public class Chess {
 
 		}
 		
-		boolean check() {
+		boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -1259,28 +1275,28 @@ public class Chess {
 				newPiece.name = "b" + newPiece.name;
 				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} 
 			else if(promote_to.equals("n")) {
 				Piece newPiece = new Knight(this.file, this.rank);
 				newPiece.name = "b" + newPiece.name;
 				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} 
 			else if(promote_to.equals("b")) {
 				Piece newPiece = new Bishop(this.file, this.rank);
 				newPiece.name = "b" + newPiece.name;
 				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} 
 			else if(promote_to.equals("q")) {
 				Piece newPiece = new Queen(this.file, this.rank);
 				newPiece.name = "b" + newPiece.name;
 				newPiece.white_side = false;
 				board[this.rank][fileToNum(this.file)] = newPiece;
-				newPiece.check();
+				newPiece.check(board);
 			} else {
 				throw new IllegalArgumentException();
 			}
@@ -1291,7 +1307,7 @@ public class Chess {
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
 			Piece[][] board_copy;
-			boolean side_playing = white_moves;
+			final boolean side_playing = white_moves;
 			
 			//Checking down 1
 			if(board[this.rank - 1][fileToNum(this.file)] == null) {
@@ -1462,7 +1478,7 @@ public class Chess {
 					this.rank = move_rank;
 					this.file = move_file;
 					this.has_moved = true;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1496,7 +1512,7 @@ public class Chess {
 					this.has_moved = true;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1534,7 +1550,7 @@ public class Chess {
 					this.has_moved = true;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1569,7 +1585,7 @@ public class Chess {
 					this.has_moved = true;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1578,7 +1594,7 @@ public class Chess {
 			
 		}
 		
-		boolean check() {
+		boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -1643,7 +1659,7 @@ public class Chess {
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
 			Piece[][] board_copy;
-			boolean side_playing = white_moves;
+			final boolean side_playing = white_moves;
 			
 			//Checking all possible moves up
 			for(int r = this.rank + 1; r < 9; r++) {
@@ -1655,6 +1671,9 @@ public class Chess {
 					board_copy[this.rank][fileToNum(this.file)] = null;
 					board_copy[r][fileToNum(this.file)].rank = r;
 					white_moves = board_copy[r][fileToNum(this.file)].white_side;
+					
+					//display(board_copy);
+					
 					if(!putsOwnKingInCheck(board_copy)) {
 						move = String.valueOf(this.file).concat(r + "");
 						result.add(move);
@@ -1850,7 +1869,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1884,7 +1903,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -1899,7 +1918,7 @@ public class Chess {
 			
 		}
 		
-		boolean check() {
+		boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -2004,7 +2023,7 @@ public class Chess {
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
 			Piece[][] board_copy;
-			boolean side_playing = white_moves;
+			final boolean side_playing = white_moves;
 			
 			//Check first layer above
 			if(this.rank <= 7) {
@@ -2341,7 +2360,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2377,7 +2396,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2412,7 +2431,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2447,7 +2466,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2459,7 +2478,7 @@ public class Chess {
 			}
 		}
 		
-		boolean check() {
+		boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -2560,7 +2579,7 @@ public class Chess {
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
 			Piece[][] board_copy;
-			boolean side_playing = white_moves;
+			final boolean side_playing = white_moves;
 			
 			//Check up-right
 			for(int r = this.rank + 1; r < 9; r++) {
@@ -2581,7 +2600,7 @@ public class Chess {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -2596,7 +2615,7 @@ public class Chess {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -2624,7 +2643,7 @@ public class Chess {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -2639,7 +2658,7 @@ public class Chess {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -2666,7 +2685,7 @@ public class Chess {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -2681,7 +2700,7 @@ public class Chess {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -2708,7 +2727,7 @@ public class Chess {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -2723,7 +2742,7 @@ public class Chess {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -2799,7 +2818,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2832,7 +2851,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2869,7 +2888,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2903,7 +2922,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2939,7 +2958,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -2973,7 +2992,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -3007,7 +3026,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -3041,7 +3060,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check()) {
+					if(this.check(board)) {
 						checkmate();
 					}
 					return;
@@ -3056,7 +3075,7 @@ public class Chess {
 			
 		}
 		
-		boolean check() {
+		boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -3211,7 +3230,7 @@ ArrayList<String> allValidMoves() {
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
 			Piece[][] board_copy;
-			boolean side_playing = white_moves;
+			final boolean side_playing = white_moves;
 			
 			//Checking all possible moves up
 			for(int r = this.rank + 1; r < 9; r++) {
@@ -3377,7 +3396,7 @@ ArrayList<String> allValidMoves() {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -3392,7 +3411,7 @@ ArrayList<String> allValidMoves() {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -3420,7 +3439,7 @@ ArrayList<String> allValidMoves() {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -3435,7 +3454,7 @@ ArrayList<String> allValidMoves() {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -3462,7 +3481,7 @@ ArrayList<String> allValidMoves() {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -3477,7 +3496,7 @@ ArrayList<String> allValidMoves() {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -3504,7 +3523,7 @@ ArrayList<String> allValidMoves() {
 					board_copy[r][f].file = numToFile(f);
 					white_moves = board_copy[r][f].white_side;
 					if(!putsOwnKingInCheck(board_copy)) {
-						move = String.valueOf(f).concat(r + "");
+						move = String.valueOf(numToFile(f)).concat(r + "");
 						result.add(move);
 					}
 					white_moves = side_playing;
@@ -3519,7 +3538,7 @@ ArrayList<String> allValidMoves() {
 						board_copy[r][f].file = numToFile(f);
 						white_moves = board_copy[r][f].white_side;
 						if(!putsOwnKingInCheck(board_copy)) {
-							move = String.valueOf(f).concat(r + "");
+							move = String.valueOf(numToFile(f)).concat(r + "");
 							result.add(move);
 						}
 						white_moves = side_playing;
@@ -3643,7 +3662,7 @@ ArrayList<String> allValidMoves() {
 							board[1][fileToNum('f')].rank = 1;
 							board[1][fileToNum('f')].file = 'f';
 							((Rook) board[1][fileToNum('f')]).has_moved = true;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -3694,7 +3713,7 @@ ArrayList<String> allValidMoves() {
 							board[1][fileToNum('d')].rank = 1;
 							board[1][fileToNum('d')].file = 'd';
 							((Rook) board[1][fileToNum('d')]).has_moved = true;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -3751,7 +3770,7 @@ ArrayList<String> allValidMoves() {
 							board[8][fileToNum('f')].rank = 8;
 							board[8][fileToNum('f')].file = 'f';
 							((Rook) board[8][fileToNum('f')]).has_moved = true;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -3802,7 +3821,7 @@ ArrayList<String> allValidMoves() {
 							board[8][fileToNum('d')].rank = 8;
 							board[8][fileToNum('d')].file = 'd';
 							((Rook) board[8][fileToNum('d')]).has_moved = true;
-							if(this.check()) {
+							if(this.check(board)) {
 								checkmate();
 							}
 							return;
@@ -3834,14 +3853,14 @@ ArrayList<String> allValidMoves() {
 				this.rank = move_rank;
 				this.file = move_file;
 				this.has_moved = true;
-				if(this.check()) {
+				if(this.check(board)) {
 					checkmate();
 				}
 				return;
 			}
 		}
 		
-		boolean check() {
+		boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -3928,10 +3947,14 @@ ArrayList<String> allValidMoves() {
 		
 		ArrayList<String> allValidMoves() {
 			
+			//System.out.println("TESTING: King Valid Moves");
+			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
 			Piece[][] board_copy;
-			boolean side_playing = white_moves;
+			final boolean side_playing = white_moves;
+			
+			//System.out.println("TESTING: side_playing: white_moves: " + side_playing);
 			
 			//Checking Above
 			if(this.rank != 8) {
@@ -3942,7 +3965,14 @@ ArrayList<String> allValidMoves() {
 					board_copy[this.rank + 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
 					board_copy[this.rank][fileToNum(this.file)] = null;
 					board_copy[this.rank + 1][fileToNum(this.file)].rank = board_copy[this.rank + 1][fileToNum(this.file)].rank + 1;
+					
+					//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+					
 					white_moves = board_copy[this.rank + 1][fileToNum(this.file)].white_side;
+					
+					//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+					
+					
 					if(!putsOwnKingInCheck(board_copy)) {
 						move = String.valueOf(this.file).concat((this.rank + 1) + "");
 						result.add(move);
@@ -3956,7 +3986,13 @@ ArrayList<String> allValidMoves() {
 						board_copy[this.rank + 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank + 1][fileToNum(this.file)].rank = board_copy[this.rank + 1][fileToNum(this.file)].rank + 1;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank + 1][fileToNum(this.file)].white_side;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						if(!putsOwnKingInCheck(board_copy)) {
 							move = String.valueOf(this.file).concat((this.rank + 1) + "");
 							result.add(move);
@@ -3973,7 +4009,13 @@ ArrayList<String> allValidMoves() {
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank + 1;
 						board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file + 1);
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].white_side;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						if(!putsOwnKingInCheck(board_copy)) {
 							move = String.valueOf((char ) (this.file + 1)).concat((this.rank + 1) + "");
 							result.add(move);
@@ -3988,7 +4030,13 @@ ArrayList<String> allValidMoves() {
 							board_copy[this.rank][fileToNum(this.file)] = null;
 							board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].rank + 1;
 							board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].file + 1);
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file + 1))].white_side;
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							if(!putsOwnKingInCheck(board_copy)) {
 								move = String.valueOf((char) (this.file + 1)).concat((this.rank + 1) + "");
 								result.add(move);
@@ -4006,7 +4054,13 @@ ArrayList<String> allValidMoves() {
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank + 1;
 						board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file - 1);
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].white_side;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						if(!putsOwnKingInCheck(board_copy)) {
 							move = String.valueOf((char ) (this.file - 1)).concat((this.rank + 1) + "");
 							result.add(move);
@@ -4021,7 +4075,13 @@ ArrayList<String> allValidMoves() {
 							board_copy[this.rank][fileToNum(this.file)] = null;
 							board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].rank + 1;
 							board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].file - 1);
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							white_moves = board_copy[this.rank + 1][fileToNum((char) (this.file - 1))].white_side;
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							if(!putsOwnKingInCheck(board_copy)) {
 								move = String.valueOf((char) (this.file - 1)).concat((this.rank + 1) + "");
 								result.add(move);
@@ -4032,15 +4092,25 @@ ArrayList<String> allValidMoves() {
 				}
 			}
 			//Checking Below
-			if(this.rank != 0) {
+			if(this.rank != 1) {
+				
+				//System.out.println("TESTING: Checking valid King moves below");
+				
 				//Checking down-center
 				if(board[this.rank - 1][fileToNum(this.file)] == null) {
+					
 					//Making sure it doesn't put itself in check
 					board_copy = copyBoard();
 					board_copy[this.rank - 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
 					board_copy[this.rank][fileToNum(this.file)] = null;
 					board_copy[this.rank - 1][fileToNum(this.file)].rank = board_copy[this.rank - 1][fileToNum(this.file)].rank - 1;
+					
+					//System.out.println("TESTING: below king: WHITE_SIDE = TRUE?: " + white_moves);
+					
 					white_moves = board_copy[this.rank - 1][fileToNum(this.file)].white_side;
+					
+					//System.out.println("TESTING: below king set: WHITE_SIDE = TRUE?: " + white_moves);
+					
 					if(!putsOwnKingInCheck(board_copy)) {
 						move = String.valueOf(this.file).concat((this.rank - 1) + "");
 						result.add(move);
@@ -4054,7 +4124,13 @@ ArrayList<String> allValidMoves() {
 						board_copy[this.rank - 1][fileToNum(this.file)] = board_copy[this.rank][fileToNum(this.file)];
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank - 1][fileToNum(this.file)].rank = board_copy[this.rank - 1][fileToNum(this.file)].rank - 1;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank - 1][fileToNum(this.file)].white_side;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						if(!putsOwnKingInCheck(board_copy)) {
 							move = String.valueOf(this.file).concat((this.rank - 1) + "");
 							result.add(move);
@@ -4065,14 +4141,26 @@ ArrayList<String> allValidMoves() {
 				//Checking down-right
 				if(this.file != 'h') {
 					if(board[this.rank - 1][fileToNum((char) (this.file + 1))] == null) {
+						
+						//System.out.println("TESTING: Checking valid King moves below - no piece down-right");
+						
 						//Making sure it doesn't put itself in check
 						board_copy = copyBoard();
 						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank - 1;
 						board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file + 1);
+						
+						//System.out.println("TESTING: BOARD_COPY");
+						//display(board_copy);
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].white_side;
+						
+						//System.out.println("TESTING: After setting: WHITE_SIDE = TRUE?: " + white_moves);
 						if(!putsOwnKingInCheck(board_copy)) {
+							//System.out.println("TESTING: AM I GETTING HERE?????");
 							move = String.valueOf((char ) (this.file + 1)).concat((this.rank - 1) + "");
 							result.add(move);
 						}
@@ -4086,7 +4174,13 @@ ArrayList<String> allValidMoves() {
 							board_copy[this.rank][fileToNum(this.file)] = null;
 							board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].rank - 1;
 							board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].file + 1);
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file + 1))].white_side;
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							if(!putsOwnKingInCheck(board_copy)) {
 								move = String.valueOf((char) (this.file + 1)).concat((this.rank - 1) + "");
 								result.add(move);
@@ -4104,7 +4198,13 @@ ArrayList<String> allValidMoves() {
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank - 1;
 						board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file - 1);
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].white_side;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						if(!putsOwnKingInCheck(board_copy)) {
 							move = String.valueOf((char ) (this.file - 1)).concat((this.rank - 1) + "");
 							result.add(move);
@@ -4119,7 +4219,13 @@ ArrayList<String> allValidMoves() {
 							board_copy[this.rank][fileToNum(this.file)] = null;
 							board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].rank - 1;
 							board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].file - 1);
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							white_moves = board_copy[this.rank - 1][fileToNum((char) (this.file - 1))].white_side;
+							
+							//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+							
 							if(!putsOwnKingInCheck(board_copy)) {
 								move = String.valueOf((char) (this.file - 1)).concat((this.rank - 1) + "");
 								result.add(move);
@@ -4137,7 +4243,13 @@ ArrayList<String> allValidMoves() {
 					board_copy[this.rank][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
 					board_copy[this.rank][fileToNum(this.file)] = null;
 					board_copy[this.rank][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file + 1))].file + 1);
+					
+					//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+					
 					white_moves = board_copy[this.rank][fileToNum((char) (this.file + 1))].white_side;
+					
+					//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+					
 					if(!putsOwnKingInCheck(board_copy)) {
 						move = String.valueOf((char) (this.file + 1)).concat(this.rank + "");
 						result.add(move);
@@ -4151,7 +4263,13 @@ ArrayList<String> allValidMoves() {
 						board_copy[this.rank][fileToNum((char) (this.file + 1))] = board_copy[this.rank][fileToNum(this.file)];
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank][fileToNum((char) (this.file + 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file + 1))].file + 1);
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank][fileToNum((char) (this.file + 1))].white_side;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						if(!putsOwnKingInCheck(board_copy)) {
 							move = String.valueOf((char) (this.file + 1)).concat(this.rank + "");
 							result.add(move);
@@ -4168,7 +4286,13 @@ ArrayList<String> allValidMoves() {
 					board_copy[this.rank][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
 					board_copy[this.rank][fileToNum(this.file)] = null;
 					board_copy[this.rank][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file - 1))].file - 1);
+					
+					//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+					
 					white_moves = board_copy[this.rank][fileToNum((char) (this.file - 1))].white_side;
+					
+					//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+					
 					if(!putsOwnKingInCheck(board_copy)) {
 						move = String.valueOf((char) (this.file - 1)).concat(this.rank + "");
 						result.add(move);
@@ -4182,7 +4306,13 @@ ArrayList<String> allValidMoves() {
 						board_copy[this.rank][fileToNum((char) (this.file - 1))] = board_copy[this.rank][fileToNum(this.file)];
 						board_copy[this.rank][fileToNum(this.file)] = null;
 						board_copy[this.rank][fileToNum((char) (this.file - 1))].file = (char) (board_copy[this.rank][fileToNum((char) (this.file - 1))].file - 1);
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						white_moves = board_copy[this.rank][fileToNum((char) (this.file - 1))].white_side;
+						
+						//System.out.println("TESTING: WHITE_SIDE = TRUE?: " + white_moves);
+						
 						if(!putsOwnKingInCheck(board_copy)) {
 							move = String.valueOf((char) (this.file - 1)).concat(this.rank + "");
 							result.add(move);
