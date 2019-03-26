@@ -3,66 +3,62 @@ package chess;
 import java.util.ArrayList;
 import java.util.Scanner;
 
-//NEED TO DO:
-
-//Checkmate not tested
-	//CHECKMATE MAY NOT WORK PROPERLY IF THE LAST MOVE WAS AN ENPASSANT
-//Stalemate not tested
-//Check not tested
-//Have not tested allValidMoves
-
-//CHECKMATE BROKEN
-	//I TRIED THIS AND IT SAID CHECKMATE WHEN IT SHOULDN'T HAVE
-/* e2 e4
- * d7 d5
- * e4 d5
- * d8 d5
- * b1 c3
- * d5 e5
- */
-//ALSO IT'S PRINTING WHITE WINS AFTER BLACK QUEEN CHECKS
-//FOUND OUT ITS BECAUSE all the allValidMoves Functions don't work
-
-//WILL CREATE JAVADOC AND FIX COMMENTS BEFORE SUBMISSION
-
-
-
-
-
-
 
 /**
- * This will be Jake Zhou and Thomas Heck's Chess Project
+ * This class is a console based chess program. All input and output is handled through the console with System.in and System.out. Upon Run, this program initializes the chess board and runs turn by turn until a win or draw condition is met such as resignation, checkmate, stalemate, or proposed draw.
  * 
- * @author Jake Zhou, Thomas Heck
- * @since 2019-03-01
+ * <p>Input is taken in the form of FileRank FileRank where the first FileRank is the starting position and the second FileRank is the position intended move-to position. The program ensures that all moves are valid before execution. There is an option third input after the FileRank FileRank that either takes the input "draw?" where the game would draw after the valid move, or a letter to indicate a promotion type when pawns are moved to the opposite final rank.
+ * 
+ * <p>This class uses polymorphism to refer to each piece collectively and use their shared methods. All pieces are extensions of the abstract class: Piece
+ * 
+ * @author Jake Zhou
+ * @author Thomas Heck
  *
  */
 
 public class Chess {
+	
 	/**
-	 * This is the data structure that we will be using. It is a 9x8 2D Array of Pieces.
-	 * We are ignoring row [0] in all our code so that the input rank correlates to the position in the 2D array without us having to subtract one from it.
-	 * Blank spots are by default NULL.
+	 * Board is the data structure that we will be using. It is a 9x8 2D Array of Pieces.
+	 * row[0] is ignored so that we do not need to convert the input ranks that range from 1-8 to 0-7 to minimize confusion while coding.
+	 * Blank spots are by default NULL while occupied positions are pointers to concrete implementations of the abstract Piece class.
+	 * 
+	 * @author Jake
+	 * 
 	 */
 	static Piece[][] board = new Piece[9][8];
+	
 	/**
-	 * done is a flag that tracks to see if the game is over.
-	 * white_moves is a flag that is true if it is white's turn, false if it is black's turn
-	 * white_enpassant is usually 0 unless white had just taken a pawn double step in his last move, in which case it stores the file of that pawn as a char
+	 * white_moves is a flag that is true if it is white's turn, false if it is black's turn. white_moves always starts as true and is reversed after a valid move has been committed.
+	 * white_enpassant is usually 0 unless white had just taken a pawn double step as their last move, in which case the variable stores the file that pawn the pawn moved in
 	 * black_enpassant is the same for black
+	 * 
+	 * @author Jake
+	 * 
 	 */
-	static boolean done = false;
 	static boolean white_moves = true;
 	static char white_enpassant = 0;
 	static char black_enpassant = 0;
+	
 	/**
-	 * in is the scanner we use to get lines. It is global so that methods like stalemate and checkmate may close it before exiting
+	 * in is the {@link Scanner} we use to get input from the user. It is global so that methods like stalemate and checkmate may close it before exiting
+	 * 
+	 * @author Jake
+	 * 
 	 */
 	static Scanner in = new Scanner(System.in);
 	
 	/**
-	 * The main method is the one that will be interacting with the user. It displays the chess board and reads input from the user.
+	 * Upon Run, the main method initializes calls the initialize method to place all pieces in their starting positions. It runs in an infinite loop and only exists if one of the players resign or asked for draw with a valid move. The method reads input and separates it into 3 parts delimited by spaces. 
+	 * 
+	 * <p>The first part of the input is the location of the piece to move. If there is no piece in this position of it is is out of the bounds of the board, the user will be told the input is invalid and will be asked for another input until the input is valid
+	 * 
+	 * <p>The second part of the input is the location for the piece in the first part to move to. If this location is out of the bounds of the board, the user will be prompted for a valid move. Each piece knows its own valid moves and if the position in part 2 is not valid for the piece, the piece will throw an IllegalArgumentException which main catches. This exception causes the user to prompted for a valid move and the illegal move will not be committed.
+	 * 
+	 * <p>The third and final part of the input is optional. If it is gibberish, it will be ignored. If it is resign, the game terminates as the side whose turn it is has resigned. If the input is instead "draw?" the move will be indicated by the first two parts will be executed if a valid move and then the game ends in a draw. If the move proposed along with the draw is NOT valid, the draw will not be executed and the "draw?" call will be forgotten. If the move proposed with the draw results in another end condition like stalemate or checkmate, those conditions take precedence before the draw.
+	 * 
+	 * <p>Upon the completion and commitment of every valid move, main reverses white_moves to change the side that is playing. It displays the board after the last move has been committed, and it checks for stalemate before taking an input.
+	 * 
 	 * @author Jake
 	 */
 	public static void main(String[] args) {
@@ -78,9 +74,9 @@ public class Chess {
 		
 		Piece piece = null;
 		
-		
 		initialize();
-		while(!done) {
+		
+		while(true) {
 			display(board);
 			
 			//Checking for stalemate
@@ -88,8 +84,7 @@ public class Chess {
 			
 			while(!valid_input) {
 				
-				
-				//Resets the enpassant variables since enpassant is valid only immediately after the opponent has moved two steps with a pawn. Since white_enpassant stores a value only if white played a double step last turn and it is again white's turn, we reset it. Same thing for black
+				//Resets the enpassant variables since enpassant is valid only immediately after the opponent has moved two steps with a pawn. If it is white's turn, it means that black no longer has the option to enpassant on the file that white has moved their pawn. white_enpassant therefore no longer stores a value. The same is true if it is black's turn, during which white no longer has the option to enpassant on the file that black has moved their pawn.
 				if(white_moves) {
 					white_enpassant = 0;
 					System.out.print("\nWhite's move: ");
@@ -99,10 +94,10 @@ public class Chess {
 					System.out.print("\nBlack's move: ");
 				}
 				
-				/*Code that reads input. All input converted to lowercase*/
+				//Code that reads input. All input converted to lowercase
 				input = in.nextLine().toLowerCase();
 				
-				//Checking for done conditions (i.e., draw, resignation)
+				//Checking for resignation
 				if(input.equals("resign")) {
 					if(white_moves) {
 						System.out.println("\nBlack wins");
@@ -117,6 +112,7 @@ public class Chess {
 				//loc - IS THE STARTING POSITION. 
 				//move_to - IS THE LOCATION THAT THE PIECE IS TO MOVE TO. 
 				//third - IS EMPTY NORMALLY, UNLESS A PLAYER HAS ASKED FOR "draw?" or is promoting Pawn
+				//The input is delimited by spaces, if there are fewer than 2 parts of the input, it is invalid
 				String[] inputArray = input.split(" ", 3);
 				if(inputArray.length < 2) {
 					System.out.println("\nIllegal move, try again");
@@ -148,6 +144,10 @@ public class Chess {
 				}
 				else {
 					piece = board[rank][fileToNum(file)];
+					if(piece.white_side != white_moves) {
+						System.out.println("\nIllegal move, try again");
+						asked_for_draw = false;
+					}
 				}
 				/*End of Part 1*/
 				
@@ -219,12 +219,11 @@ public class Chess {
 			
 		}
 		
-		in.close();
-		return;
 	}
 	
 	/**
-	 * initialize() is called once. It initializes the empty 2d array of Pieces so that they are filled like a proper chess board with the white pieces on the bottom.
+	 * initialize is called at boot up. It creates instances of all pieces at their proper starting positions and initializes their fields to the proper values.
+	 * 
 	 * @author Jake
 	 */
 	public static void initialize() {
@@ -242,10 +241,10 @@ public class Chess {
 			piece.name = "w" + piece.name;
 			piece.white_side = true;
 		}
-		/*for(int j = 0; j < 8; j++) {
+		for(int j = 0; j < 8; j++) {
 			board[2][j] = new White_Pawn(numToFile(j), 2);
 			board[2][j].white_side = true;
-		}*/
+		}
 		
 		//Initializing black pieces
 		board[8][0] = new Rook('a', 8);
@@ -261,16 +260,19 @@ public class Chess {
 			piece.name = "b" + piece.name;
 			piece.white_side = false;
 		}
-		/*for(int j = 0; j < 8; j++) {
+		for(int j = 0; j < 8; j++) {
 			board[7][j] = new Black_Pawn(numToFile(j), 7);
 			board[7][j].white_side = false;
-		}*/
+		}
 	}
 	
 	/**
-	 * display() views the board 2D array and shows all the pieces that are in the board. Any position that is NULL instead of containing a piece will display blank or as ##.
-	 * This method will also print out the file numbers and the rank letters
+	 * display prints out the board given by the parameter. All pieces are represented by two character spaces to indicate their side and their type followed by an empty space. Each rank is marked on the right hand side and each file is marked on the bottom where the file letters are aligned with the piece type of all pieces in that file. Any position that does not contain a piece shows either as two empty spaces to represent a white square followed by another empty space or as two "#" characters to represent a black square followed by an empty space.
+	 * 
+	 * <p>In practice display is only ever passed the global board since that is the board the user is interacting with. During development, display was also passed temporary boards that were created to ensure moves were valid which where used in methods like putsOwnKingInCheck. Since it was much easier to debug logical issues when the temporary boards were shown, this method not takes an input board.
+	 * 
 	 * @author Jake
+	 * @param board the board that display displays. In practice only every the global board
 	 */
 	public static void display(Piece[][] board) {
 		Piece piece;
@@ -298,10 +300,12 @@ public class Chess {
 	}
 	
 	/**
-	 * This helper method takes in the character for the file from the input and returns a number 0-7. Useful when referencing a position in the board 2D array
-	 * @param file - a character that is denotes the file in the input
-	 * @return int value between 0-7 associated with file character if successful. Throws an illegal argument exception if input is not valid
+	 * This helper method takes in the character for the file from the input and returns a number 0-7 correlating with the file. Useful when referencing a position in the board 2D array
+	 * 
 	 * @author Jake
+	 * @param file - a character that is denotes the file of the board ranging from a-h
+	 * @return int value between 0-7 associated with file character if successful. 
+	 * @throws IllegalArgumentException if the input is not a char value from a-h
 	 */
 	public static int fileToNum(char file) throws IllegalArgumentException{
 		switch (file) {
@@ -313,16 +317,18 @@ public class Chess {
 			case 'f': return 5;
 			case 'g': return 6;
 			case 'h': return 7;
-			default: throw new IllegalArgumentException("Invalid File Char to convert to Num: " + file);
+			default: throw new IllegalArgumentException();
 		}
 		
 	}
 	
 	/**
-	 * This helper method takes an int and returns a char for the file associated. Useful when referencing a position in the board 2D array
-	 * @param file - an int value associated with a column of the board 2D array
-	 * @return char value of the file name a-h. Throws an illegal argument exception if input is not valid
+	 * This helper method takes an int and returns a char for the corresponding file. Useful when assigning file value to a piece
+	 * 
 	 * @author Jake
+	 * @param file - an int value associated with a column of the board 2D array ranging from 0-7
+	 * @return char value of the file name ranging from a-h
+	 * @throws IllegalArgumentException if input is not int between 0-7
 	 */
 	public static char numToFile(int file) throws IllegalArgumentException{
 		switch (file) {
@@ -340,9 +346,10 @@ public class Chess {
 	}
 	
 	/**
-	 * This helper functions creates a copy of the current board. This copy of the board is used in the putsOwnKingInCheck() method
-	 * @param none
-	 * @return a copy of the current board
+	 * copyBoard creates a copy of the current global board. All moves are first made on the copied board where they are ran through the {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} method that runs through the copied board to see if any of the opposing pieces are checking the current side's King.
+	 * 
+	 * @author Jake
+	 * @return a copy of the global board
 	 */
 	public static Piece[][] copyBoard() {
 		Piece[][] board_copy = new Piece[9][8];
@@ -402,9 +409,10 @@ public class Chess {
 	}
 	
 	/**
-	 * This help method takes in a temporary board and checks to see if the King of the side playing is in check in this temporary board
-	 * This is a method that is called by every piece before the move is committed since it has to ensure that the move does not place the same side's King in check
-	 * @param takes in a board after a move has been made
+	 * putsOwnKingInCheck checks to see if the current side playing, indicated by the global variable {@link #white_moves white_moves}, is in check. This method is called before any move is committed since players are not allowed to place their own King in check with a move. This method is also called by every pieces' allValidMoves method that finds all of that piece instance's valid moves. These moves are first checked to ensure they do not place the piece's own King in check before they are considered valid.
+	 * 
+	 * @author Jake
+	 * @param board_copy - a copy of the global board created by {@link #copyBoard()} after a move has been made on the board_copy
 	 * @return returns true if the input board has the current side's King in chess, meaning the last move was illegal, otherwise returns false
 	 */
 	public static boolean putsOwnKingInCheck(Piece[][] board_copy) {
@@ -442,18 +450,15 @@ public class Chess {
 	}
 	
 	/**
-	 * This method is ran by each piece's check function upon finding a check on the opponent side's King
-	 * It checks to see if there is a checkmate. If there is, end game, otherwise just print check
-	 * This method goes through the board and finds all pieces on the opposite side of who is currently playing and see if there is valid move for these pieces that puts their King out of check
+	 * checkmate checks to see if the opposing king, whose white_side variable should be the opposite value of the global {@link #white_moves} variable, is in checkmate or just a check. This method is ran by each piece's check function upon finding a check on the opponent side's King
+	 * 
+	 * <p>This method goes through the global board and finds all pieces on the opposite side of the current side playing and checks for any valid moves that puts their King out of check
+	 * 
+	 * <p>If a valid move is found, the method prints Check and returns. If no valid move is found, the method prints Checkmate, indicates the winning side, and exists the program.
+	 * 
+	 * @author Jake
 	 */
 	public static void checkmate() {
-		
-		if(white_moves) {
-			//System.out.println("TESTING: WHITE CALLS CHECK");
-		}
-		else {
-			//System.out.println("TESTING: BLACK'S CALLS CHECK");
-		}
 		
 		Piece temp;
 		ArrayList<String> tempMoves;
@@ -468,16 +473,16 @@ public class Chess {
 					temp = board[r][f];
 					//If the piece is on the opponent side
 					if(temp.white_side != white_moves) {
-						System.out.println("\nTESITNG - in checkmate:\nName: " + temp.name + "\nFile: " + String.valueOf(temp.file) + "\nRank: " + temp.rank); 
+						//System.out.println("\nTESITNG - in checkmate:\nName: " + temp.name + "\nFile: " + String.valueOf(temp.file) + "\nRank: " + temp.rank); 
 						
 						//Grab their valid moves
 						tempMoves = temp.allValidMoves();
-						System.out.println("TESTING - in checkmate: tempMoves.size(): " + tempMoves.size());
+						//System.out.println("TESTING - in checkmate: tempMoves.size(): " + tempMoves.size());
 						
 						//Go through all their valid moves
 						for(int i = 0; i < tempMoves.size(); i++) {
 							
-							System.out.println("TESTING - in checkmate: i: " + i + " tempMoves.get(i): " + tempMoves.get(i));
+							//System.out.println("TESTING - in checkmate: i: " + i + " tempMoves.get(i): " + tempMoves.get(i));
 							
 							int move_file = fileToNum(tempMoves.get(i).charAt(0));
 							int move_rank = Character.getNumericValue(tempMoves.get(i).charAt(1));
@@ -523,9 +528,9 @@ public class Chess {
 	}
 	
 	/**
-	 * Before every move is played, this method checks to see if the current side is in stalemate
-	 * It goes through the board, checks to see if the current position holds a piece on this side, and gets all its valid pieces
-	 * If the check goes through the entire board without finding a valid move from this side's pieces, it ends the game in stalemate
+	 * Stalemate goes through the entire global board and finds pieces of the side that is currently playing, which are the pieces whose white_side variables are equal to the global {@link #white_moves} variable, and tests to see if those pieces have a valid move. Upon the first piece that has a valid move, the method is returned out of. If the entire board has been iterated through and no pieces of the playing side has a valid move, there is a stalemate and the proper messages a printed and the program exited. This method is called at the beginning of every turn.
+	 * 
+	 * @author Jake
 	 */
 	public static void stalemate() {
 		
@@ -570,9 +575,12 @@ public class Chess {
 	}
 	
 	/**
-	 * This is the abstract class that all pieces will extend. Each piece must store a String of its name, a char of its file (a-h), an int of its rank (1-8), and a boolean for its side: white_side == true for white false for black
-	 * Each piece must also implement the move method and the check method.
-	 * @param String input - the input string from the user. Each piece will check the input itself to see if valid for that piece
+	 * Piece is the abstract class that all pieces will extend and exists so that each piece can be controlled polymorphically, e.g., the main method can say piece.move(), the {@link #putsOwnKingInCheck(Piece[][] board) putsOwnKingInCheck} method can say piece.check, etc. 
+	 * 
+	 * <p>Each piece must store a String of its name, a char of its file (a-h), an int of its rank (1-8), and a boolean for its side: white_side == true for white or false for black. 
+	 * 
+	 * <p>Each piece must also implement a move method, which throws an IllegalArgumentException if the position it is to move to indicated by the parameter is not valid, a check method that checks all the positions the piece can move to to see if it is placing the opponent's King in check, and an allValidMoves method that returns that piece's valid moves
+	 * 
 	 * @author Jake
 	 *
 	 */
@@ -587,14 +595,21 @@ public class Chess {
 	}
 	
 	/**
-	 * This section contains all the pieces. White and Black Pawns are separate pieces since they move differently, but all other pieces move the same regardless of which side
-	 * All pieces take an input string of the position they are to move to, checking to see if the path is clear and if the input is valid
-	 * All pieces must be created with a starting position inputed as a string with FileRank
-	 * Pawns have a separate method for promotion that occurs when the reached the opposite end of the board
-	 *
+	 * White_Pawn and Black_Pawns are the only cases where there are separate classes for the same type of piece since pawns can only advance while other pieces may move in any direction. Pawns also are unique in that they have an additional method called {@link #promote(String) Promote} called when they reach the opposing end's final rank
+	 * 
+	 * See {@link chess.Chess.Black_Pawn}
+	 * 
+	 * @author Jake
 	 */
 	public static class White_Pawn extends Piece{
 		
+		/**
+		 * Constructor initializes the piece's name as "wp", its file as the input file, its rank as the input rank, and its white_side as true
+		 * 
+		 * @author Jake
+		 * @param file - the file where the piece was created
+		 * @param rank - the rank where the piece was created
+		 */
 		public White_Pawn(char file, int rank) {
 			this.name = "wp";
 			this.file = file;
@@ -602,15 +617,23 @@ public class Chess {
 			this.white_side = true;
 		}
 		
+		/**
+		 * White_Pawns may move up towards ranks of greater value. They can move up one in their file if the path is clear, up two in their file if the path is clear and they are still in their starting position, up-left or up-right if there is an opponent piece there or if they are performing an En Passant. When they reach the opposite side's final rank, they are {@link #promote(String) promoted}. All moves are ensured not to place the piece's own King in check by {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} method before being committed. If a move is valid, this piece's position is changed in the global board and its own file and rank fields are updated
+		 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
 		void move(String move_to) throws IllegalArgumentException{
 			
+			/*
 			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
 				System.out.println("File: " + this.file);
 				System.out.println("Rank: " + this.rank);
 				in.close();
 				System.exit(0);
-			}
+			}*/
 			
 			//If you are trying to move a white pawn on a black turn
 			if(!white_moves) {
@@ -810,6 +833,13 @@ public class Chess {
 
 		}
 		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
 		boolean check(Piece[][] board) {
 			
 			Piece temp;
@@ -865,6 +895,13 @@ public class Chess {
 			return false;
 		}
 		
+		/**
+		 * Takes in an input indicating what the pawn should be prmoted to. Replaces the piece in the pawn's position on the final rank with a piece of the indicated promotion type. Initializes the new piece's values to be the proper values. It also checks to see if this promotion places the opponent King in check
+		 * 
+		 * @author Jake
+		 * @param promote_to - should be one of the 4 possible values to promote to. It is a lowercase lettering indicating Rook, Knight, Bishop, or Queen
+		 * @throws IllegalArgumentException if the input is not one of four the valid promotion types
+		 */
 		void promote(String promote_to) throws IllegalArgumentException{
 			if(promote_to.equals("r")) {
 				Piece newPiece = new Rook(this.file, this.rank);
@@ -898,6 +935,12 @@ public class Chess {
 			}
 		}
 		
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
 		ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
@@ -1009,22 +1052,46 @@ public class Chess {
 		}
 	}
 	
+	/**
+	 * White_Pawn and Black_Pawns are the only cases where there are separate classes for the same type of piece since pawns can only advance while other pieces may move in any direction.  Pawns also are unique in that they have an additional method called {@link #promote(String) Promote} called when they reach the opposing end's final rank
+	 * 
+	 * See {@link chess.Chess.White_Pawn}
+	 * 
+	 * @author Jake
+	 */
 	public static class Black_Pawn extends Piece {
+		
+		/**
+		 * Constructor initializes the piece's name as "bp", its file as the input file, its rank as the input rank, and its white_side as false
+		 * 
+		 * @author Jake
+		 * @param file - the file where the piece was created
+		 * @param rank - the rank where the piece was created
+		 */
 		public Black_Pawn(char file, int rank) {
 			this.name = "bp";
 			this.file = file;
 			this.rank = rank;
 			this.white_side = false;
 		}
+		
+		/**
+		 * Black_Pawns may move up towards ranks of lesser value. They can move down one in their file if the path is clear, up down in their file if the path is clear and they are still in their starting position, down-left or down-right if there is an opponent piece there or if they are performing an En Passant. When they reach the opposite side's final rank, they are {@link #promote(String) promoted}. All moves are ensured not to place the piece's own King in check by {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} method before being committed. If a move is valid, this piece's position is changed in the global board and its own file and rank fields are updated
+		 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
 		void move(String move_to)  throws IllegalArgumentException{
 			
+			/*
 			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
 				System.out.println("File: " + this.file);
 				System.out.println("Rank: " + this.rank);
 				in.close();
 				System.exit(0);
-			}
+			}*/
 			
 			//If you're trying to move a black piece on a white move
 			if(white_moves) {
@@ -1213,6 +1280,13 @@ public class Chess {
 
 		}
 		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
 		boolean check(Piece[][] board) {
 			
 			Piece temp;
@@ -1269,6 +1343,13 @@ public class Chess {
 			return false;
 		}
 		
+		/**
+		 * Takes in an input indicating what the pawn should be prmoted to. Replaces the piece in the pawn's position on the final rank with a piece of the indicated promotion type. Initializes the new piece's values to be the proper values. It also checks to see if this promotion places the opponent King in check
+		 * 
+		 * @author Jake
+		 * @param promote_to - should be one of the 4 possible values to promote to. It is a lowercase lettering indicating Rook, Knight, Bishop, or Queen
+		 * @throws IllegalArgumentException if the input is not one of four the valid promotion types
+		 */
 		void promote(String promote_to) throws IllegalArgumentException{
 			if(promote_to.equals("r")) {
 				Piece newPiece = new Rook(this.file, this.rank);
@@ -1302,6 +1383,12 @@ public class Chess {
 			}
 		}
 		
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
 		ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
@@ -1412,24 +1499,46 @@ public class Chess {
 		}
 	}
 	
+	/**
+	 * Rook class and King class are the only Pieces to have an additional field to other Pieces. They store a boolean has_moved that is false until they have moved. This boolean is used when a King tries to castle since castling is only allowed when both the King and the Rook have not moved.
+	 * 
+	 * See {@link chess.Chess.King}
+	 * 
+	 * @author Jake
+	 */
 	public static class Rook extends Piece {
 		
 		boolean has_moved = false;
 		
+		/**
+		 * Constructor initializes the piece's name as "R", its file as the input file, its rank as the input rank. A "w" or "b" is added before the name and its white_side value is set when the piece is created either in {@link #initialize()} or by a Pawn's promotion method
+		 * 
+		 * @author Jake
+		 * @param file - the file where the piece was created
+		 * @param rank - the rank where the piece was created
+		 */
 		public Rook(char file, int rank) {
 			this.name = "R";
 			this.file = file;
 			this.rank = rank;
 		}
+		
+		/**
+		 * Rooks may move to any position in their file or rank as long as the path is clear and the destination is not occupied by a piece of the same side. All moves are ensured not to place the piece's own King in check by {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} method before being committed. If a move is valid, this piece's position is changed in the global board and its own file and rank fields are updated
+		 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
 		void move(String move_to)  throws IllegalArgumentException{
 			
-			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
+			/*if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
 				System.out.println("File: " + this.file);
 				System.out.println("Rank: " + this.rank);
 				in.close();
 				System.exit(0);
-			}
+			}*/
 
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
@@ -1594,6 +1703,13 @@ public class Chess {
 			
 		}
 		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
 		boolean check(Piece[][] board) {
 			
 			Piece temp;
@@ -1654,6 +1770,12 @@ public class Chess {
 			return false;
 		}
 		
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
 		ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
@@ -1813,23 +1935,42 @@ public class Chess {
 		}
 	}
 	
+	/**
+	 * The Knight class acts like a knight in any chess game.
+	 * 
+	 * @author Jake
+	 */
 	public static class Knight extends Piece {
 		
+		/**
+		 * Constructor initializes the piece's name as "N", its file as the input file, its rank as the input rank. A "w" or "b" is added before the name and its white_side value is set when the piece is created either in {@link #initialize()} or by a Pawn's promotion method
+		 * 
+		 * @author Jake
+		 * @param file - the file where the piece was created
+		 * @param rank - the rank where the piece was created
+		 */
 		public Knight(char file, int rank) {
 			this.name = "N";
 			this.file = file;
 			this.rank = rank;
 		}
 		
+		/**
+		 * Knights have at most 8 possible moves at a given point. They may not move to one of these possible positions if a piece of the same side is in that position of the position is out of the bounds of the playing board. All moves are ensured not to place the piece's own King in check by {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} method before being committed. If a move is valid, this piece's position is changed in the global board and its own file and rank fields are updated
+		 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
 		void move(String move_to)  throws IllegalArgumentException{
 			
-			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
+			/*if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
 				System.out.println("File: " + this.file);
 				System.out.println("Rank: " + this.rank);
 				in.close();
 				System.exit(0);
-			}
+			}*/
 			
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
@@ -1918,6 +2059,13 @@ public class Chess {
 			
 		}
 		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
 		boolean check(Piece[][] board) {
 			
 			Piece temp;
@@ -2018,6 +2166,12 @@ public class Chess {
 			return false;
 		}
 		
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
 		ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
@@ -2292,23 +2446,41 @@ public class Chess {
 		
 	}
 	
+	/**
+	 * The Bishop class acts like a bishop in any chess game.
+	 * 
+	 * @author Jake
+	 */
 	public static class Bishop extends Piece {
 		
+		/**
+		 * Constructor initializes the piece's name as "B", its file as the input file, its rank as the input rank. A "w" or "b" is added before the name and its white_side value is set when the piece is created either in {@link #initialize()} or by a Pawn's promotion method
+		 * 
+		 * @author Jake
+		 * @param file - the file where the piece was created
+		 * @param rank - the rank where the piece was created
+		 */
 		public Bishop(char file, int rank) {
 			this.name = "B";
 			this.file = file;
 			this.rank = rank;
 		}
 		
+		/**
+		 * Bishops may move to any position that is diagonal to them as long as the path is clear and the target destination does not contain a piece of the same side. All moves are ensured not to place the piece's own King in check by {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} method before being committed. If a move is valid, this piece's position is changed in the global board and its own file and rank fields are updated	 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
 		void move(String move_to)  throws IllegalArgumentException{
 			
-			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
+			/*if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
 				System.out.println("File: " + this.file);
 				System.out.println("Rank: " + this.rank);
 				in.close();
 				System.exit(0);
-			}
+			}*/
 			
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
@@ -2478,6 +2650,13 @@ public class Chess {
 			}
 		}
 		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
 		boolean check(Piece[][] board) {
 			
 			Piece temp;
@@ -2574,6 +2753,12 @@ public class Chess {
 			return false;
 		}
 		
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
 		ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
@@ -2756,14 +2941,33 @@ public class Chess {
 		}
 	}
 	
+	/**
+	 * The Queen class acts like a queen in any chess game.
+	 * 
+	 * @author Jake
+	 */
 	public static class Queen extends Piece {
 		
+		/**
+		 * Constructor initializes the piece's name as "Q", its file as the input file, its rank as the input rank. A "w" or "b" is added before the name and its white_side value is set when the piece is created either in {@link #initialize()} or by a Pawn's promotion method
+		 * 
+		 * @author Jake
+		 * @param file - the file where the piece was created
+		 * @param rank - the rank where the piece was created
+		 */
 		public Queen(char file, int rank) {
 			this.name = "Q";
 			this.file = file;
 			this.rank = rank;
 		}
 		
+		/**
+		 * Queens move like a {@link Rook} or a {@link Bishop}. All moves are ensured not to place the piece's own King in check by {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} method before being committed. If a move is valid, this piece's position is changed in the global board and its own file and rank fields are updated
+		 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
 		void move(String move_to)  throws IllegalArgumentException{
 			
 			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
@@ -3075,6 +3279,13 @@ public class Chess {
 			
 		}
 		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
 		boolean check(Piece[][] board) {
 			
 			Piece temp;
@@ -3225,7 +3436,13 @@ public class Chess {
 			
 		}
 		
-ArrayList<String> allValidMoves() {
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
+		ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
@@ -3552,16 +3769,39 @@ ArrayList<String> allValidMoves() {
 		}
 	}
 	
+	/**
+	 * Rook class and King class are the only Pieces to have an additional field to other Pieces. They store a boolean has_moved that is false until they have moved. This boolean is used when a King tries to castle since castling is only allowed when both the King and the Rook have not moved.
+	 * 
+	 * See {@link chess.Chess.Rook}
+	 * 
+	 * @author Jake
+	 */
 	public static class King extends Piece {
 		
 		boolean has_moved = false;
 		
+		/**
+		 * Constructor initializes the piece's name as "K", its file as the input file, its rank as the input rank. A "w" or "b" is added before the name and its white_side value is set when the piece is created in {@link #initialize()}
+		 * 
+		 * @author Jake
+		 * @param file - the file where the piece was created
+		 * @param rank - the rank where the piece was created
+		 */
 		public King(char file, int rank) {
 			this.name = "K";
 			this.file = file;
 			this.rank = rank;
 		}
 		
+		/**
+		 * Kings may move to any space adjacent to any space adjacent to them as long as there is not a piece of the same side in that position and the move will not place it in check. Kings may also castle if they have not yet moved, have a clear path to one of the rooks, and that rook has not moved. King's move method is the only move method that moves another Piece, which is the Rook that is moved during castling. A King may not castle if it moves through a check or if it will be in check after the castling. If a move is valid, this piece's position is changed in the global board and its own file and rank fields are updated
+		 * 
+		 * <p>King's move method does not call {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} since it was written before that method existed. Instead, each move is checked to ensure it does not place this King in check in the move method itself.
+		 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
 		void move(String move_to)  throws IllegalArgumentException{
 			
 			//Trying to move opponent's piece
@@ -3860,6 +4100,13 @@ ArrayList<String> allValidMoves() {
 			}
 		}
 		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
 		boolean check(Piece[][] board) {
 			
 			Piece temp;
@@ -3945,6 +4192,12 @@ ArrayList<String> allValidMoves() {
 			return false;
 		}
 		
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
 		ArrayList<String> allValidMoves() {
 			
 			//System.out.println("TESTING: King Valid Moves");
