@@ -4165,18 +4165,22 @@ public class Chess {
 				}
 			}
 			//Check right
-			temp = board[this.rank][fileToNum((char) (this.file + 1))];
-			//if it's the opposite king
-			if(temp instanceof King) {
-				//checkmate((char) temp.file, temp.rank);
-				return true;
+			if(this.file != 'h') {
+				temp = board[this.rank][fileToNum((char) (this.file + 1))];
+				//if it's the opposite king
+				if(temp instanceof King) {
+					//checkmate((char) temp.file, temp.rank);
+					return true;
+				}
 			}
 			//Check left
-			temp = board[this.rank][fileToNum((char) (this.file - 1))];
-			//if it's the opposite king
-			if(temp instanceof King) {
-				//checkmate((char) temp.file, temp.rank);
-				return true;
+			if(this.file != 'a') {
+				temp = board[this.rank][fileToNum((char) (this.file - 1))];
+				//if it's the opposite king
+				if(temp instanceof King) {
+					//checkmate((char) temp.file, temp.rank);
+					return true;
+				}
 			}
 			
 			return false;
