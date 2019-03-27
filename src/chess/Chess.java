@@ -551,6 +551,7 @@ public class Chess {
 		}
 		
 		//Went through all the possible pieces and there is no instance where a valid move brings the opponent King out of check
+		System.out.println("");
 		display(board);
 		System.out.println("\nCheckmate");
 		if(white_moves) {
