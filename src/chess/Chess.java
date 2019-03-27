@@ -26,7 +26,7 @@ public class Chess {
 	 * @author Jake
 	 * 
 	 */
-	static Piece[][] board = new Piece[9][8];
+	public static Piece[][] board = new Piece[9][8];
 	
 	/**
 	 * white_moves is a flag that is true if it is white's turn, false if it is black's turn. white_moves always starts as true and is reversed after a valid move has been committed.
@@ -36,9 +36,9 @@ public class Chess {
 	 * @author Jake
 	 * 
 	 */
-	static boolean white_moves = true;
-	static char white_enpassant = 0;
-	static char black_enpassant = 0;
+	public static boolean white_moves = true;
+	public static char white_enpassant = 0;
+	public static char black_enpassant = 0;
 	
 	/**
 	 * in is the {@link Scanner} we use to get input from the user. It is global so that methods like stalemate and checkmate may close it before exiting
@@ -46,7 +46,7 @@ public class Chess {
 	 * @author Jake
 	 * 
 	 */
-	static Scanner in = new Scanner(System.in);
+	public static Scanner in = new Scanner(System.in);
 	
 	/**
 	 * Upon Run, the main method initializes calls the initialize method to place all pieces in their starting positions. It runs in an infinite loop and only exists if one of the players resign or asked for draw with a valid move. The method reads input and separates it into 3 parts delimited by spaces. 
@@ -147,6 +147,7 @@ public class Chess {
 					if(piece.white_side != white_moves) {
 						System.out.println("\nIllegal move, try again");
 						asked_for_draw = false;
+						continue;
 					}
 				}
 				/*End of Part 1*/
@@ -450,6 +451,42 @@ public class Chess {
 	}
 	
 	/**
+	 * checkForCheck runs through the entire board and finds all pieces of the side playing and sees if they are currently checking the opponent's King. If so, calls checkmate, otherwise, we continue normally
+	 * 
+	 * @author Jake
+	 * @param board the board that is being checked for checks on the opponent King. Can be the global board or a temporary board used for {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} for instance
+	 */
+	public static void checkForCheck(Piece[][] board) {
+		
+		Piece temp;
+		
+		//Going through all the ranks
+		for(int r = 1; r < 9; r++) {
+			//Going through all the files
+			for(int f = 0; f < 8; f++) {
+				//If there is a piece in this spot
+				if(board[r][f] != null) {
+					temp = board[r][f];
+					
+					//System.out.println("\nTESITNG:\nName: " + temp.name + "\nFile: " + String.valueOf(temp.file) + "\nRank: " + temp.rank); 
+					
+					//If the piece is on the current side playing
+					if(temp.white_side == white_moves) {
+						
+						//System.out.println("\nTESITNG: temp's white_side = : " + temp.white_side); 
+						
+						if(temp.check(board)) {
+							checkmate();
+							return;
+						}
+					}
+				}
+			}
+		}
+		
+	}
+	
+	/**
 	 * checkmate checks to see if the opposing king, whose white_side variable should be the opposite value of the global {@link #white_moves} variable, is in checkmate or just a check. This method is ran by each piece's check function upon finding a check on the opponent side's King
 	 * 
 	 * <p>This method goes through the global board and finds all pieces on the opposite side of the current side playing and checks for any valid moves that puts their King out of check
@@ -588,10 +625,33 @@ public class Chess {
 		String name;
 		char file;
 		int rank;
-		boolean white_side;
-		abstract void move(String move_to) throws IllegalArgumentException;
-		abstract boolean check(Piece[][] board);
-		abstract ArrayList<String> allValidMoves();
+		public boolean white_side;
+		
+		/**
+		 * Move takes an input string of 2 characters composing of a file and a rank of the destination. Move always runs {@link #putsOwnKingInCheck(Piece[][]) putsOwnKingInCheck} before committing the move. Move also checks to see if the move has placed the opponent's king in check with {@link #checkForCheck(Piece[][]) checkForCheck} method. If a move were valid and to be committed, the Piece's position on the global board is changed and its file and rank fields are updated. More specific descriptions of move exists for each class that extends Piece.
+		 * 
+		 * @author Jake
+		 * @param move_to a two part String with the file and the rank that they are to move to
+		 * @throws IllegalArgumentException if the move_to position is not valid
+		 */
+		public abstract void move(String move_to) throws IllegalArgumentException;
+		
+		/**
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * 
+		 * @author Jake
+		 * @param board the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
+		 * @return true if it is checking the opponent King, false otherwise
+		 */
+		public abstract boolean check(Piece[][] board);
+		
+		/**
+		 * Returns all the positions that this piece can move to as an ArrayList of Strings. Each String is 2 characters consisting of a file and a rank
+		 * 
+		 * @author Jake
+		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
+		 */
+		public abstract ArrayList<String> allValidMoves();
 	}
 	
 	/**
@@ -624,7 +684,7 @@ public class Chess {
 		 * @param move_to a two part String with the file and the rank that they are to move to
 		 * @throws IllegalArgumentException if the move_to position is not valid
 		 */
-		void move(String move_to) throws IllegalArgumentException{
+		public void move(String move_to) throws IllegalArgumentException{
 			
 			/*
 			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
@@ -674,9 +734,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						}
 						else {
@@ -703,9 +761,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} else if (move_file == (this.file - 1) && move_rank == (this.rank + 1)) {
 					//System.out.println("Pawn moving up-left");
@@ -731,9 +787,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						}
 						else {
@@ -758,9 +812,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} else {
 					//System.out.println("Something wrong");
@@ -789,9 +841,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} else if(move_rank == this.rank + 2 && this.rank == 2) {
 					
@@ -819,9 +869,7 @@ public class Chess {
 					this.rank = move_rank;
 					this.file = move_file;
 					white_enpassant = this.file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					
 					//System.out.println("TESTING: ABOUT TO FINISH MOVING");
 					
@@ -834,13 +882,13 @@ public class Chess {
 		}
 		
 		/**
-		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
 		 * 
 		 * @author Jake
 		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
 		 * @return true if it is checking the opponent King, false otherwise
 		 */
-		boolean check(Piece[][] board) {
+		public boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -941,7 +989,7 @@ public class Chess {
 		 * @author Jake
 		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
 		 */
-		ArrayList<String> allValidMoves() {
+		public ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
@@ -1082,7 +1130,7 @@ public class Chess {
 		 * @param move_to a two part String with the file and the rank that they are to move to
 		 * @throws IllegalArgumentException if the move_to position is not valid
 		 */
-		void move(String move_to)  throws IllegalArgumentException{
+		public void move(String move_to)  throws IllegalArgumentException{
 			
 			/*
 			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
@@ -1129,9 +1177,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						}
 						else {
@@ -1157,9 +1203,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} else if (move_file == (this.file - 1) && move_rank == (this.rank - 1)) {
 					//System.out.println("Pawn moving down-left");
@@ -1185,9 +1229,7 @@ public class Chess {
 							board[this.rank][fileToNum(this.file)] = null;
 							this.rank = move_rank;
 							this.file = move_file;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						}
 						else {
@@ -1212,9 +1254,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} else {
 					//System.out.println("Something wrong");
@@ -1241,9 +1281,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving 2 spaces
 				else if(move_rank == rank - 2 && this.rank == 7) {
@@ -1268,9 +1306,7 @@ public class Chess {
 					this.rank = move_rank;
 					this.file = move_file;
 					black_enpassant = this.file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} 
 				else {
@@ -1281,13 +1317,13 @@ public class Chess {
 		}
 		
 		/**
-		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
 		 * 
 		 * @author Jake
 		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
 		 * @return true if it is checking the opponent King, false otherwise
 		 */
-		boolean check(Piece[][] board) {
+		public boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -1389,7 +1425,7 @@ public class Chess {
 		 * @author Jake
 		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
 		 */
-		ArrayList<String> allValidMoves() {
+		public ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
@@ -1508,7 +1544,7 @@ public class Chess {
 	 */
 	public static class Rook extends Piece {
 		
-		boolean has_moved = false;
+		public boolean has_moved = false;
 		
 		/**
 		 * Constructor initializes the piece's name as "R", its file as the input file, its rank as the input rank. A "w" or "b" is added before the name and its white_side value is set when the piece is created either in {@link #initialize()} or by a Pawn's promotion method
@@ -1530,7 +1566,7 @@ public class Chess {
 		 * @param move_to a two part String with the file and the rank that they are to move to
 		 * @throws IllegalArgumentException if the move_to position is not valid
 		 */
-		void move(String move_to)  throws IllegalArgumentException{
+		public void move(String move_to)  throws IllegalArgumentException{
 			
 			/*if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
@@ -1587,9 +1623,7 @@ public class Chess {
 					this.rank = move_rank;
 					this.file = move_file;
 					this.has_moved = true;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving down the board
 				else {
@@ -1621,9 +1655,7 @@ public class Chess {
 					this.has_moved = true;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				}
 			} //Moving along the rank
@@ -1659,9 +1691,7 @@ public class Chess {
 					this.has_moved = true;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving to the left
 				else {
@@ -1694,9 +1724,7 @@ public class Chess {
 					this.has_moved = true;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				}
 			}
@@ -1704,13 +1732,13 @@ public class Chess {
 		}
 		
 		/**
-		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
 		 * 
 		 * @author Jake
 		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
 		 * @return true if it is checking the opponent King, false otherwise
 		 */
-		boolean check(Piece[][] board) {
+		public boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -1776,7 +1804,7 @@ public class Chess {
 		 * @author Jake
 		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
 		 */
-		ArrayList<String> allValidMoves() {
+		public ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
@@ -1962,7 +1990,7 @@ public class Chess {
 		 * @param move_to a two part String with the file and the rank that they are to move to
 		 * @throws IllegalArgumentException if the move_to position is not valid
 		 */
-		void move(String move_to)  throws IllegalArgumentException{
+		public void move(String move_to)  throws IllegalArgumentException{
 			
 			/*if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
@@ -2010,9 +2038,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Invalid move
 				else {
@@ -2044,9 +2070,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Invalid move
 				else {
@@ -2060,13 +2084,13 @@ public class Chess {
 		}
 		
 		/**
-		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
 		 * 
 		 * @author Jake
 		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
 		 * @return true if it is checking the opponent King, false otherwise
 		 */
-		boolean check(Piece[][] board) {
+		public boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -2172,7 +2196,7 @@ public class Chess {
 		 * @author Jake
 		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
 		 */
-		ArrayList<String> allValidMoves() {
+		public ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
@@ -2472,7 +2496,7 @@ public class Chess {
 		 * @param move_to a two part String with the file and the rank that they are to move to
 		 * @throws IllegalArgumentException if the move_to position is not valid
 		 */
-		void move(String move_to)  throws IllegalArgumentException{
+		public void move(String move_to)  throws IllegalArgumentException{
 			
 			/*if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
@@ -2532,9 +2556,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving up left
 				else if(move_file < this.file && move_rank > this.rank) {
@@ -2568,9 +2590,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving down right
 				else if(move_file > this.file && move_rank < this.rank) {
@@ -2603,9 +2623,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving down left
 				else if(move_file < this.file && move_rank < this.rank){
@@ -2638,9 +2656,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Something's wrong
 				else {
@@ -2651,13 +2667,13 @@ public class Chess {
 		}
 		
 		/**
-		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
 		 * 
 		 * @author Jake
 		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
 		 * @return true if it is checking the opponent King, false otherwise
 		 */
-		boolean check(Piece[][] board) {
+		public boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -2759,7 +2775,7 @@ public class Chess {
 		 * @author Jake
 		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
 		 */
-		ArrayList<String> allValidMoves() {
+		public ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
@@ -2968,7 +2984,7 @@ public class Chess {
 		 * @param move_to a two part String with the file and the rank that they are to move to
 		 * @throws IllegalArgumentException if the move_to position is not valid
 		 */
-		void move(String move_to)  throws IllegalArgumentException{
+		public void move(String move_to)  throws IllegalArgumentException{
 			
 			if(!board[this.rank][fileToNum(this.file)].equals(this)) {
 				System.out.println("we have not tracked this file and rank properly.");
@@ -3022,9 +3038,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving down
 				else {
@@ -3055,9 +3069,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				}
 			} //Moving horizontally
@@ -3092,9 +3104,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving left
 				else {
@@ -3126,9 +3136,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				}
 			} //Moving diagonally
@@ -3162,9 +3170,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving up-left
 				else if(move_file < this.file && move_rank > this.rank) {
@@ -3196,9 +3202,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving down-right
 				else if(move_file > this.file && move_rank < this.rank) {
@@ -3230,9 +3234,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Moving down left
 				else if(move_file < this.file && move_rank < this.rank) {
@@ -3264,9 +3266,7 @@ public class Chess {
 					board[this.rank][fileToNum(this.file)] = null;
 					this.rank = move_rank;
 					this.file = move_file;
-					if(this.check(board)) {
-						checkmate();
-					}
+					checkForCheck(board);
 					return;
 				} //Invalid move
 				else {
@@ -3280,13 +3280,13 @@ public class Chess {
 		}
 		
 		/**
-		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
 		 * 
 		 * @author Jake
 		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
 		 * @return true if it is checking the opponent King, false otherwise
 		 */
-		boolean check(Piece[][] board) {
+		public boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -3442,7 +3442,7 @@ public class Chess {
 		 * @author Jake
 		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
 		 */
-		ArrayList<String> allValidMoves() {
+		public ArrayList<String> allValidMoves() {
 			
 			ArrayList<String> result = new ArrayList<String>();
 			String move;
@@ -3778,7 +3778,7 @@ public class Chess {
 	 */
 	public static class King extends Piece {
 		
-		boolean has_moved = false;
+		public boolean has_moved = false;
 		
 		/**
 		 * Constructor initializes the piece's name as "K", its file as the input file, its rank as the input rank. A "w" or "b" is added before the name and its white_side value is set when the piece is created in {@link #initialize()}
@@ -3802,7 +3802,7 @@ public class Chess {
 		 * @param move_to a two part String with the file and the rank that they are to move to
 		 * @throws IllegalArgumentException if the move_to position is not valid
 		 */
-		void move(String move_to)  throws IllegalArgumentException{
+		public void move(String move_to)  throws IllegalArgumentException{
 			
 			//Trying to move opponent's piece
 			if(this.white_side != white_moves) {
@@ -3902,9 +3902,7 @@ public class Chess {
 							board[1][fileToNum('f')].rank = 1;
 							board[1][fileToNum('f')].file = 'f';
 							((Rook) board[1][fileToNum('f')]).has_moved = true;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						} //Trying to castle queenside
 						else if(move_to.equals("c1")) {
@@ -3953,9 +3951,7 @@ public class Chess {
 							board[1][fileToNum('d')].rank = 1;
 							board[1][fileToNum('d')].file = 'd';
 							((Rook) board[1][fileToNum('d')]).has_moved = true;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						} //Invalid move
 						else {
@@ -4010,9 +4006,7 @@ public class Chess {
 							board[8][fileToNum('f')].rank = 8;
 							board[8][fileToNum('f')].file = 'f';
 							((Rook) board[8][fileToNum('f')]).has_moved = true;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						} //Trying to castle queenside
 						else if(move_to.equals("c8")) {
@@ -4061,9 +4055,7 @@ public class Chess {
 							board[8][fileToNum('d')].rank = 8;
 							board[8][fileToNum('d')].file = 'd';
 							((Rook) board[8][fileToNum('d')]).has_moved = true;
-							if(this.check(board)) {
-								checkmate();
-							}
+							checkForCheck(board);
 							return;
 						} //Invalid move
 						else {
@@ -4093,21 +4085,19 @@ public class Chess {
 				this.rank = move_rank;
 				this.file = move_file;
 				this.has_moved = true;
-				if(this.check(board)) {
-					checkmate();
-				}
+				checkForCheck(board);
 				return;
 			}
 		}
 		
 		/**
-		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #move(String) move} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
+		 * check checks the positions in the inputed board that this piece can capture in to see if the opponent side's King is there. In the {@link #checkForCheck(Piece[][]) checkForCheck} method if check returns true, checkmate is called. Check does not call checkmate itself since the check may be in a temporary board used in testing like the ones used in {@link #allValidMoves() allValidMoves} method
 		 * 
 		 * @author Jake
 		 * @param board - the board the that check is being tested in. This can be the global board or a temporary board created in putsOwnKingInCheck for instance
 		 * @return true if it is checking the opponent King, false otherwise
 		 */
-		boolean check(Piece[][] board) {
+		public boolean check(Piece[][] board) {
 			
 			Piece temp;
 			
@@ -4198,7 +4188,7 @@ public class Chess {
 		 * @author Jake
 		 * @return ArrayList of strings of FileRank format of all the places this piece can move to
 		 */
-		ArrayList<String> allValidMoves() {
+		public ArrayList<String> allValidMoves() {
 			
 			//System.out.println("TESTING: King Valid Moves");
 			
