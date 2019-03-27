@@ -195,7 +195,7 @@ public class Chess {
 						piece.check(board);
 					}
 				} catch (IllegalArgumentException e) {
-					//e.printStackTrace();
+					e.printStackTrace();
 					System.out.println("\nIllegal move, try again");
 					asked_for_draw = false;
 					continue;
@@ -603,7 +603,6 @@ public class Chess {
 			}
 		}
 		//Went through the entire board and no pieces on this side has a valid move
-		display(board);
 		System.out.println("\nStalemate");
 		System.out.println("\ndraw");
 		in.close();
