@@ -195,7 +195,7 @@ public class Chess {
 						piece.check(board);
 					}
 				} catch (IllegalArgumentException e) {
-					e.printStackTrace();
+					//e.printStackTrace();
 					System.out.println("\nIllegal move, try again");
 					asked_for_draw = false;
 					continue;
